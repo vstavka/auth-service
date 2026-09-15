@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "auth-service"
+version = "0.0.1"
+description = "Vstavka auth-service"
+authors = ["Роман <roma.korotaev2015@mail.ru>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+uuid6 = "^2025.0.1"
+email-validator = "^2.3.0"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "^9.1.1"
+pytest-cov = "^7.1.0"
+pytest-asyncio = "^1.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
