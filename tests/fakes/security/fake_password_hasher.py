@@ -12,8 +12,8 @@ class FakePasswordHasher(PasswordHasher):
         return PasswordHash(f"{self.PREFIX}{digest}")
 
     def verify(
-        self,
-        raw_password: str,
-        password_hash: PasswordHash,
+            self,
+            raw_password: str,
+            password_hash: PasswordHash,
     ) -> bool:
         return self.hash(raw_password) == password_hash

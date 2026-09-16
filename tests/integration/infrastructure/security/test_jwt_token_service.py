@@ -6,8 +6,8 @@ import pytest
 from src.domain.exceptions.base import AppError
 from src.domain.value_objects import UserId
 from src.infrastructure.security.jwt_token_service import JWTTokenService
-from tests.fakes.system.fake_clock import FakeClock
 from src.shared.errors.codes import ErrorCode
+from tests.fakes.system.fake_clock import FakeClock
 
 
 @pytest.mark.asyncio
@@ -20,8 +20,8 @@ class TestJWTTokenService:
 
     @pytest.fixture
     def token_service(
-        self,
-        clock: FakeClock,
+            self,
+            clock: FakeClock,
     ) -> JWTTokenService:
         return JWTTokenService(
             secret_key="test-secret-key-that-is-long-enough-for-tests",
@@ -39,9 +39,9 @@ class TestJWTTokenService:
         )
 
     async def test_issues_access_and_refresh_tokens(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
     ) -> None:
         tokens = token_service.issue_tokens(account_id)
 
@@ -55,24 +55,24 @@ class TestJWTTokenService:
         assert tokens.token_type == "bearer"
 
     async def test_issues_access_token_with_expected_expiration(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
-        clock: FakeClock,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
+            clock: FakeClock,
     ) -> None:
         tokens = token_service.issue_tokens(account_id)
 
         assert tokens.access_token_expires_at == (
-            clock.now() + timedelta(minutes=15)
+                clock.now() + timedelta(minutes=15)
         ).replace(microsecond=0)
         assert tokens.refresh_token_expires_at == (
-            clock.now() + timedelta(days=7)
+                clock.now() + timedelta(days=7)
         ).replace(microsecond=0)
 
     async def test_verifies_issued_access_token(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
     ) -> None:
         tokens = token_service.issue_tokens(account_id)
 
@@ -84,8 +84,8 @@ class TestJWTTokenService:
         assert payload.expires_at == tokens.access_token_expires_at
 
     async def test_rejects_unknown_or_malformed_access_token(
-        self,
-        token_service: JWTTokenService,
+            self,
+            token_service: JWTTokenService,
     ) -> None:
         with pytest.raises(AppError) as error:
             token_service.verify_access_token(
@@ -95,10 +95,10 @@ class TestJWTTokenService:
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
 
     async def test_rejects_access_token_signed_with_other_secret(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
-        clock: FakeClock,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
+            clock: FakeClock,
     ) -> None:
         issuer_service = JWTTokenService(
             secret_key="first-secret-key-for-tests",
@@ -123,10 +123,10 @@ class TestJWTTokenService:
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
 
     async def test_rejects_expired_access_token(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
-        clock: FakeClock,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
+            clock: FakeClock,
     ) -> None:
         clock.advance(timedelta(minutes=-16))
         tokens = token_service.issue_tokens(account_id)
@@ -139,9 +139,9 @@ class TestJWTTokenService:
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
 
     async def test_rejects_refresh_token_as_access_token(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
     ) -> None:
         tokens = token_service.issue_tokens(account_id)
 
@@ -153,9 +153,9 @@ class TestJWTTokenService:
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
 
     async def test_creates_different_refresh_tokens_for_same_account(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
     ) -> None:
         first_tokens = token_service.issue_tokens(account_id)
         second_tokens = token_service.issue_tokens(account_id)
@@ -163,9 +163,9 @@ class TestJWTTokenService:
         assert first_tokens.refresh_token != second_tokens.refresh_token
 
     async def test_hashes_refresh_token_deterministically(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
     ) -> None:
         tokens = token_service.issue_tokens(account_id)
 
@@ -180,9 +180,9 @@ class TestJWTTokenService:
         assert first_hash != tokens.refresh_token
 
     async def test_creates_different_hashes_for_different_refresh_tokens(
-        self,
-        token_service: JWTTokenService,
-        account_id: UserId,
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
     ) -> None:
         first_tokens = token_service.issue_tokens(account_id)
         second_tokens = token_service.issue_tokens(account_id)

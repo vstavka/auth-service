@@ -12,7 +12,6 @@ from src.domain.enums import AccountStatus
 from src.domain.exceptions.email import EmailAlreadyRegisteredError, InvalidEmailError
 from src.domain.exceptions.password import InvalidPasswordError
 from src.domain.services.password_policy import PasswordPolicy
-
 from src.domain.value_objects import Email, UserId
 from tests.fakes.security.fake_password_hasher import FakePasswordHasher
 from tests.fakes.security.fake_token_service import FakeTokenService
@@ -49,19 +48,19 @@ class TestRegisterAccount:
 
     @pytest.fixture
     def fake_token_service(
-        self,
-        fake_clock: FakeClock,
+            self,
+            fake_clock: FakeClock,
     ) -> FakeTokenService:
         return FakeTokenService(clock=fake_clock)
 
     @pytest.fixture
     def use_case(
-        self,
-        fake_uow: FakeUnitOfWork,
-        fake_clock: FakeClock,
-        fake_id_generator: FakeIdGenerator,
-        fake_password_hasher: FakePasswordHasher,
-        fake_token_service: FakeTokenService,
+            self,
+            fake_uow: FakeUnitOfWork,
+            fake_clock: FakeClock,
+            fake_id_generator: FakeIdGenerator,
+            fake_password_hasher: FakePasswordHasher,
+            fake_token_service: FakeTokenService,
     ) -> RegisterAccount:
         return RegisterAccount(
             uow=fake_uow,
@@ -73,10 +72,10 @@ class TestRegisterAccount:
         )
 
     async def test_registers_new_account_and_returns_tokens(
-        self,
-        use_case: RegisterAccount,
-        fake_uow: FakeUnitOfWork,
-        account_id: UUID,
+            self,
+            use_case: RegisterAccount,
+            fake_uow: FakeUnitOfWork,
+            account_id: UUID,
     ) -> None:
         result = await use_case.execute(
             RegisterAccountCommand(
@@ -105,11 +104,11 @@ class TestRegisterAccount:
         assert fake_uow.closed is True
 
     async def test_rejects_registration_when_email_exists(
-        self,
-        use_case: RegisterAccount,
-        fake_uow: FakeUnitOfWork,
-        fake_clock: FakeClock,
-        fake_password_hasher: FakePasswordHasher,
+            self,
+            use_case: RegisterAccount,
+            fake_uow: FakeUnitOfWork,
+            fake_clock: FakeClock,
+            fake_password_hasher: FakePasswordHasher,
     ) -> None:
         existing_account = Account.create(
             account_id=UserId(
@@ -136,9 +135,9 @@ class TestRegisterAccount:
         assert fake_uow.rollback_called is True
 
     async def test_does_not_create_account_when_password_is_invalid(
-        self,
-        use_case: RegisterAccount,
-        fake_uow: FakeUnitOfWork,
+            self,
+            use_case: RegisterAccount,
+            fake_uow: FakeUnitOfWork,
     ) -> None:
         with pytest.raises(InvalidPasswordError):
             await use_case.execute(
@@ -156,9 +155,9 @@ class TestRegisterAccount:
         assert account is None
 
     async def test_does_not_create_account_when_email_is_invalid(
-        self,
-        use_case: RegisterAccount,
-        fake_uow: FakeUnitOfWork,
+            self,
+            use_case: RegisterAccount,
+            fake_uow: FakeUnitOfWork,
     ) -> None:
         with pytest.raises(InvalidEmailError):
             await use_case.execute(

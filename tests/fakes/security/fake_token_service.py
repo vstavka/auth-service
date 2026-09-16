@@ -10,11 +10,11 @@ from src.shared.errors.codes import ErrorCode
 
 class FakeTokenService(TokenService):
     def __init__(
-        self,
-        *,
-        clock: Clock,
-        access_token_ttl: timedelta = timedelta(minutes=15),
-        refresh_token_ttl: timedelta = timedelta(days=7),
+            self,
+            *,
+            clock: Clock,
+            access_token_ttl: timedelta = timedelta(minutes=15),
+            refresh_token_ttl: timedelta = timedelta(days=7),
     ) -> None:
         self._clock = clock
         self._access_token_ttl = access_token_ttl
@@ -27,8 +27,8 @@ class FakeTokenService(TokenService):
         self.issued_refresh_tokens: list[str] = []
 
     def issue_tokens(
-        self,
-        account_id: UserId,
+            self,
+            account_id: UserId,
     ) -> TokenPair:
         now = self._clock.now()
 
@@ -59,8 +59,8 @@ class FakeTokenService(TokenService):
         )
 
     def verify_access_token(
-        self,
-        access_token: str,
+            self,
+            access_token: str,
     ) -> AccessTokenPayload:
         payload = self._access_tokens.get(access_token)
 
@@ -79,7 +79,7 @@ class FakeTokenService(TokenService):
         return payload
 
     def hash_refresh_token(
-        self,
-        refresh_token: str,
+            self,
+            refresh_token: str,
     ) -> str:
         return f"fake-refresh-hash:{refresh_token}"
