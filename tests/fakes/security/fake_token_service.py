@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta, UTC
+from datetime import timedelta
 
-from src.application.dto import TokenPair, AccessTokenPayload
+from src.application.dto import AccessTokenPayload, TokenPair
 from src.application.ports.security import TokenService
 from src.application.ports.system import Clock
 from src.domain.exceptions.base import AppError
@@ -9,36 +9,59 @@ from src.shared.errors.codes import ErrorCode
 
 
 class FakeTokenService(TokenService):
-
     def __init__(
-            self,
-            *,
-            clock:Clock,
-            access_token_ttl: timedelta = timedelta(minutes=15),
-            refresh_token_ttl: timedelta = timedelta(days=7),
+        self,
+        *,
+        clock: Clock,
+        access_token_ttl: timedelta = timedelta(minutes=15),
+        refresh_token_ttl: timedelta = timedelta(days=7),
     ) -> None:
         self._clock = clock
         self._access_token_ttl = access_token_ttl
         self._refresh_token_ttl = refresh_token_ttl
+
         self._counter = 0
         self._access_tokens: dict[str, AccessTokenPayload] = {}
 
-    def issue_tokens(self, account_id: UserId) -> TokenPair:
-        access_expires_at = self._clock.now() + self._access_token_ttl
-        refresh_expires_at = self._clock.now()  + self._refresh_token_ttl
+        self.issued_account_ids: list[UserId] = []
+        self.issued_refresh_tokens: list[str] = []
 
-        access_token = f"fake-access:{account_id}:{self._counter}"
+    def issue_tokens(
+        self,
+        account_id: UserId,
+    ) -> TokenPair:
+        now = self._clock.now()
 
-        refresh_token = f"fake-refresh:{account_id}:{self._counter}"
+        access_expires_at = now + self._access_token_ttl
+        refresh_expires_at = now + self._refresh_token_ttl
+
+        self._counter += 1
+
+        access_token = (
+            f"fake-access:{account_id.value}:{self._counter}"
+        )
+        refresh_token = (
+            f"fake-refresh:{account_id.value}:{self._counter}"
+        )
 
         self._access_tokens[access_token] = AccessTokenPayload(
             account_id=account_id,
             expires_at=access_expires_at,
         )
-        return TokenPair(access_token=access_token, refresh_token=refresh_token,
-                         expires_in=self._access_token_ttl.seconds)
+        self.issued_account_ids.append(account_id)
+        self.issued_refresh_tokens.append(refresh_token)
 
-    def verify_access_token(self, access_token: str) -> AccessTokenPayload:
+        return TokenPair(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            access_expires_at=access_expires_at,
+            refresh_expires_at=refresh_expires_at,
+        )
+
+    def verify_access_token(
+        self,
+        access_token: str,
+    ) -> AccessTokenPayload:
         payload = self._access_tokens.get(access_token)
 
         if payload is None:
@@ -54,3 +77,9 @@ class FakeTokenService(TokenService):
             )
 
         return payload
+
+    def hash_refresh_token(
+        self,
+        refresh_token: str,
+    ) -> str:
+        return f"fake-refresh-hash:{refresh_token}"
