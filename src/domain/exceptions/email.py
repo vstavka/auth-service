@@ -9,3 +9,12 @@ class InvalidEmailError(AppError):
             message="Invalid email",
             details={"reason": reason} if reason else None,
         )
+
+
+class EmailAlreadyRegisteredError(AppError):
+    def __init__(self, reason: str | None = None) -> None:
+        super().__init__(
+            code=ErrorCode.AUTH_EMAIL_ALREADY_REGISTERED,
+            message="Email already registered",
+            details={"reason": reason} if reason else None,
+        )

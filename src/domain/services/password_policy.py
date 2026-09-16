@@ -12,12 +12,12 @@ class PasswordPolicy:
     def validate(self, raw_password: str) -> None:
         if len(raw_password) < self.min_length:
             raise InvalidPasswordError(
-                details={"min_length": self.min_length,"reason":"too_short"},
+                details={"min_length": self.min_length, "reason": "too_short"},
             )
 
         if len(raw_password) > self.max_length:
             raise InvalidPasswordError(
-                details={"max_length": self.max_length,"reason":"too_long"},
+                details={"max_length": self.max_length, "reason": "too_long"},
             )
 
         if not re.search(r"[a-zа-яё]", raw_password, re.IGNORECASE):

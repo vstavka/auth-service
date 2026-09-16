@@ -11,11 +11,11 @@ class TestEmail:
 
     def test_stores_normalized_value(self):
         email = Email("User@YANDEX.COM")
-        assert email.value == "User@yandex.com"
+        assert email.value == "User@YANDEX.COM".lower()
 
     def test_converts_to_string(self):
         email = Email("User@YANDEX.COM")
-        assert str(email) == "User@yandex.com"
+        assert str(email) == "User@YANDEX.COM".lower()
 
     def test_with_same_value_is_equal(self):
         first = Email("User@YANDEX.COM")

@@ -1,14 +1,11 @@
-import logging
 from abc import abstractmethod
 
-from src.application.ports.account_repository import AccountRepository
-
-logger = logging.getLogger(__name__)
+from src.application.ports.repositories.account_repository import AccountRepository
 
 
 class UnitOfWork:
     """Transaction context with access to repositories."""
-    account: AccountRepository
+    accounts: AccountRepository
 
     @abstractmethod
     async def commit(self) -> None:

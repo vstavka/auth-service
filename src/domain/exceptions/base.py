@@ -4,7 +4,7 @@ from typing import Any
 from src.shared.errors.codes import ErrorCode
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class AppError(Exception):
     code: ErrorCode
     message: str

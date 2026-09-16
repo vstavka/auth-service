@@ -12,7 +12,7 @@ class Email:
     def __post_init__(self) -> None:
         try:
             validated = validate_email(
-                self.value,
+                self.value.lower(),
                 check_deliverability=False,
             )
         except EmailNotValidError as exc:
