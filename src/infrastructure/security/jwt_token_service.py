@@ -2,6 +2,7 @@ import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from uuid import UUID
 
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -11,7 +12,6 @@ from src.application.ports.security import TokenService
 from src.application.ports.system import Clock
 from src.domain.exceptions.base import AppError
 from src.domain.value_objects import UserId
-
 from src.shared.errors.codes import ErrorCode
 
 
@@ -20,14 +20,14 @@ class JWTTokenService(TokenService):
     ACCESS_TOKEN_TYPE = "access"
 
     def __init__(
-        self,
-        *,
-        secret_key: str,
-        clock: Clock,
-        access_token_ttl: timedelta = timedelta(minutes=15),
-        refresh_token_ttl: timedelta = timedelta(days=7),
-        issuer: str = "auth-service",
-        audience: str = "auth-api",
+            self,
+            *,
+            secret_key: str,
+            clock: Clock,
+            access_token_ttl: timedelta = timedelta(minutes=15),
+            refresh_token_ttl: timedelta = timedelta(days=7),
+            issuer: str = "auth-service",
+            audience: str = "auth-api",
     ) -> None:
         if not secret_key:
             raise ValueError("secret_key must not be empty")
@@ -45,11 +45,15 @@ class JWTTokenService(TokenService):
         self._issuer = issuer
         self._audience = audience
 
+    @staticmethod
+    def _truncate_to_seconds(value: datetime) -> datetime:
+        return value.replace(microsecond=0)
+
     def issue_tokens(
-        self,
-        account_id: UserId,
+            self,
+            account_id: UserId,
     ) -> TokenPair:
-        now = self._clock.now()
+        now = self._truncate_to_seconds(self._clock.now())
         access_token_expires_at = now + self._access_token_ttl
         refresh_token_expires_at = now + self._refresh_token_ttl
 
@@ -68,8 +72,8 @@ class JWTTokenService(TokenService):
         )
 
     def verify_access_token(
-        self,
-        access_token: str,
+            self,
+            access_token: str,
     ) -> AccessTokenPayload:
         try:
             payload = jwt.decode(
@@ -93,7 +97,7 @@ class JWTTokenService(TokenService):
             raise AppError(
                 code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
                 message="Access token is invalid or expired",
-            ) from exc
+            )
 
         if payload.get("typ") != self.ACCESS_TOKEN_TYPE:
             raise AppError(
@@ -103,7 +107,7 @@ class JWTTokenService(TokenService):
 
         try:
             return AccessTokenPayload(
-                account_id=UserId(payload["sub"]),
+                account_id=UserId(UUID(payload["sub"])),
                 expires_at=datetime.fromtimestamp(
                     payload["exp"],
                     tz=UTC,
@@ -113,22 +117,22 @@ class JWTTokenService(TokenService):
             raise AppError(
                 code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
                 message="Access token is invalid or expired",
-            ) from exc
+            )
 
     def hash_refresh_token(
-        self,
-        refresh_token: str,
+            self,
+            refresh_token: str,
     ) -> str:
         return hashlib.sha256(
             refresh_token.encode("utf-8"),
         ).hexdigest()
 
     def _create_access_token(
-        self,
-        *,
-        account_id: UserId,
-        issued_at: datetime,
-        expires_at: datetime,
+            self,
+            *,
+            account_id: UserId,
+            issued_at: datetime,
+            expires_at: datetime,
     ) -> str:
         payload: dict[str, Any] = {
             "sub": str(account_id.value),

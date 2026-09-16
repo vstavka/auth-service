@@ -1,4 +1,3 @@
-from typing import Protocol
 from uuid import UUID
 
 from uuid6 import uuid7

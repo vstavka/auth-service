@@ -54,8 +54,8 @@ class FakeTokenService(TokenService):
         return TokenPair(
             access_token=access_token,
             refresh_token=refresh_token,
-            access_expires_at=access_expires_at,
-            refresh_expires_at=refresh_expires_at,
+            access_token_expires_at=access_expires_at,
+            refresh_token_expires_at=refresh_expires_at,
         )
 
     def verify_access_token(
