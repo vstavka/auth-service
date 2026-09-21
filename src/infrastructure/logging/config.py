@@ -6,6 +6,7 @@ import uuid
 from contextvars import ContextVar
 from datetime import datetime, UTC
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 import colorlog
@@ -176,12 +177,14 @@ def setup_logging(
     }
 
     if log_path:
+        path_log = Path(log_path)
+        path_log.parent.mkdir(parents=True, exist_ok=True)
         handlers["file"] = {
             "class": "logging.handlers.RotatingFileHandler",
             "level": level,
             "formatter": "json",
             "filters": ["request_id"],
-            "filename": log_path,
+            "filename": str(path_log),
             "maxBytes": 10 * 1024 * 1024,
             "backupCount": 5,
             "encoding": "utf-8",
