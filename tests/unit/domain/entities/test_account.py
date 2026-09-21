@@ -154,3 +154,63 @@ class TestAccount:
         assert account.status is AccountStatus.ACTIVE
         assert account.updated_at == CREATED_AT
         assert account.is_active is True
+
+    def test_create_without_id_sets_id_to_none(self):
+        account = Account.create(
+            public_id=ACCOUNT_PUBLIC_ID,
+            email=EMAIL,
+            password_hash=INITIAL_PASSWORD_HASH,
+            now=CREATED_AT,
+        )
+
+        assert account.id is None
+
+    def test_disable_from_deleted_sets_disabled_and_updates_updated_at(self):
+        deleted_at = datetime(2026, 9, 15, 18, 0, tzinfo=timezone.utc)
+        disabled_at = datetime(2026, 9, 15, 18, 5, tzinfo=timezone.utc)
+        account = Account(
+            id=ACCOUNT_ID,
+            public_id=ACCOUNT_PUBLIC_ID,
+            email=EMAIL,
+            password_hash=INITIAL_PASSWORD_HASH,
+            status=AccountStatus.DELETED,
+            created_at=deleted_at,
+            updated_at=deleted_at,
+        )
+
+        account.disable(disabled_at)
+
+        assert account.status is AccountStatus.DISABLED
+        assert account.updated_at == disabled_at
+
+    def test_enable_from_deleted_is_noop(self):
+        deleted_at = datetime(2026, 9, 15, 18, 0, tzinfo=timezone.utc)
+        attempted_at = datetime(2026, 9, 15, 18, 5, tzinfo=timezone.utc)
+        account = Account(
+            id=ACCOUNT_ID,
+            public_id=ACCOUNT_PUBLIC_ID,
+            email=EMAIL,
+            password_hash=INITIAL_PASSWORD_HASH,
+            status=AccountStatus.DELETED,
+            created_at=deleted_at,
+            updated_at=deleted_at,
+        )
+
+        account.enable(attempted_at)
+
+        assert account.status is AccountStatus.DELETED
+        assert account.updated_at == deleted_at
+
+    def test_is_active_false_when_deleted(self):
+        now = datetime(2026, 9, 15, 18, 0, tzinfo=timezone.utc)
+        account = Account(
+            id=ACCOUNT_ID,
+            public_id=ACCOUNT_PUBLIC_ID,
+            email=EMAIL,
+            password_hash=INITIAL_PASSWORD_HASH,
+            status=AccountStatus.DELETED,
+            created_at=now,
+            updated_at=now,
+        )
+
+        assert account.is_active is False

@@ -44,3 +44,7 @@ class TestUserId:
     def test_user_id_rejects_non_uuid_value(self):
         with pytest.raises(TypeError, match="UserId.value must be UUID"):
             UserId(value="12345678-1234-5678-1234-567812345678")
+
+    def test_rejects_none_value(self):
+        with pytest.raises(TypeError, match="UserId.value must be UUID"):
+            UserId(value=None)

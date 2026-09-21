@@ -108,3 +108,72 @@ class TestSessionLifecycle:
             await uow.begin()
         await uow.rollback()
         await uow._session.close()
+
+    @pytest.mark.asyncio
+    async def test_reenter_after_successful_exit_creates_new_session(self, uow_factory):
+        uow = uow_factory()
+
+        async with uow:
+            first_session = uow._session
+
+        async with uow:
+            second_session = uow._session
+
+        assert first_session is not None
+        assert second_session is not None
+        assert first_session is not second_session
+
+    @pytest.mark.asyncio
+    async def test_explicit_commit_after_begin_persists(self, uow_factory, async_engine):
+        account = make_account(email="explicit-commit@example.com")
+        uow = uow_factory()
+
+        await uow.begin()
+        await uow.accounts.add(account)
+        await uow.commit()
+        await uow._session.close()
+        uow._session = None
+
+        async with AsyncSession(async_engine) as verify_session:
+            result = await verify_session.execute(
+                select(AccountORM).where(
+                    AccountORM.email == "explicit-commit@example.com"
+                )
+            )
+            assert result.scalar_one_or_none() is not None
+
+    @pytest.mark.asyncio
+    async def test_explicit_rollback_after_begin_discards_add(
+            self, uow_factory, async_engine
+    ):
+        account = make_account(email="explicit-rollback@example.com")
+        uow = uow_factory()
+
+        await uow.begin()
+        await uow.accounts.add(account)
+        await uow.rollback()
+        await uow._session.close()
+        uow._session = None
+
+        async with AsyncSession(async_engine) as verify_session:
+            result = await verify_session.execute(
+                select(AccountORM).where(
+                    AccountORM.email == "explicit-rollback@example.com"
+                )
+            )
+            assert result.scalar_one_or_none() is None
+
+    @pytest.mark.asyncio
+    async def test_accounts_is_sql_account_repository_after_begin(self, uow_factory):
+        from src.infrastructure.persistence.sqlalchemy.repositories.sql_account_repository import (
+            SQLAccountRepository,
+        )
+
+        uow = uow_factory()
+        await uow.begin()
+        try:
+            assert isinstance(uow.accounts, SQLAccountRepository)
+        finally:
+            await uow.rollback()
+            await uow._session.close()
+            uow._session = None

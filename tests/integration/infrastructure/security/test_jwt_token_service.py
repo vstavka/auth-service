@@ -195,3 +195,140 @@ class TestJWTTokenService:
         )
 
         assert first_hash != second_hash
+
+    def test_init_rejects_empty_secret_key(self, clock: FakeClock) -> None:
+        with pytest.raises(ValueError, match="secret_key must not be empty"):
+            JWTTokenService(secret_key="", clock=clock)
+
+    def test_init_rejects_non_positive_access_token_ttl(self, clock: FakeClock) -> None:
+        with pytest.raises(ValueError, match="access_token_ttl must be positive"):
+            JWTTokenService(
+                secret_key="valid-secret",
+                clock=clock,
+                access_token_ttl=timedelta(seconds=0),
+            )
+
+    def test_init_rejects_non_positive_refresh_token_ttl(self, clock: FakeClock) -> None:
+        with pytest.raises(ValueError, match="refresh_token_ttl must be positive"):
+            JWTTokenService(
+                secret_key="valid-secret",
+                clock=clock,
+                refresh_token_ttl=timedelta(days=0),
+            )
+
+    def test_init_accepts_secret_str(
+            self,
+            clock: FakeClock,
+            account_id: UserId,
+    ) -> None:
+        from pydantic import SecretStr
+
+        service = JWTTokenService(
+            secret_key=SecretStr("secret-from-secret-str"),
+            clock=clock,
+        )
+        tokens = service.issue_tokens(account_id)
+        payload = service.verify_access_token(tokens.access_token)
+
+        assert payload.account_id == account_id
+
+    def test_verify_rejects_wrong_issuer(
+            self,
+            clock: FakeClock,
+            account_id: UserId,
+    ) -> None:
+        issuer = JWTTokenService(
+            secret_key="shared-secret",
+            clock=clock,
+            issuer="issuer-a",
+            audience="auth-api",
+        )
+        verifier = JWTTokenService(
+            secret_key="shared-secret",
+            clock=clock,
+            issuer="issuer-b",
+            audience="auth-api",
+        )
+        tokens = issuer.issue_tokens(account_id)
+
+        with pytest.raises(AppError) as error:
+            verifier.verify_access_token(tokens.access_token)
+
+        assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
+
+    def test_verify_rejects_wrong_audience(
+            self,
+            clock: FakeClock,
+            account_id: UserId,
+    ) -> None:
+        issuer = JWTTokenService(
+            secret_key="shared-secret",
+            clock=clock,
+            issuer="auth-service",
+            audience="audience-a",
+        )
+        verifier = JWTTokenService(
+            secret_key="shared-secret",
+            clock=clock,
+            issuer="auth-service",
+            audience="audience-b",
+        )
+        tokens = issuer.issue_tokens(account_id)
+
+        with pytest.raises(AppError) as error:
+            verifier.verify_access_token(tokens.access_token)
+
+        assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
+
+    def test_verify_rejects_non_access_typ(
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
+            clock: FakeClock,
+    ) -> None:
+        import jwt
+
+        now = clock.now().replace(microsecond=0)
+        token = jwt.encode(
+            {
+                "sub": str(account_id.value),
+                "typ": "refresh",
+                "iss": "auth-service",
+                "aud": "auth-api",
+                "iat": now,
+                "exp": now + timedelta(minutes=15),
+            },
+            key="test-secret-key-that-is-long-enough-for-tests",
+            algorithm="HS256",
+        )
+
+        with pytest.raises(AppError) as error:
+            token_service.verify_access_token(token)
+
+        assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
+
+    def test_verify_rejects_invalid_sub_not_uuid(
+            self,
+            token_service: JWTTokenService,
+            clock: FakeClock,
+    ) -> None:
+        import jwt
+
+        now = clock.now().replace(microsecond=0)
+        token = jwt.encode(
+            {
+                "sub": "not-a-uuid",
+                "typ": "access",
+                "iss": "auth-service",
+                "aud": "auth-api",
+                "iat": now,
+                "exp": now + timedelta(minutes=15),
+            },
+            key="test-secret-key-that-is-long-enough-for-tests",
+            algorithm="HS256",
+        )
+
+        with pytest.raises(AppError) as error:
+            token_service.verify_access_token(token)
+
+        assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID

@@ -1,0 +1,85 @@
+import pytest
+from pydantic import SecretStr, ValidationError
+
+from src.infrastructure.config.settings import (
+    AppSettings,
+    DatabaseSettings,
+    JWTSettings,
+    LoggingSettings,
+    Settings,
+)
+
+
+@pytest.mark.unit
+class TestDatabaseSettings:
+    def test_database_settings_url_postgres(self) -> None:
+        settings = DatabaseSettings(
+            type="postgres",
+            host="db.example.com",
+            port=5433,
+            name="auth",
+            username="user",
+            password=SecretStr("s3cret"),
+            _env_file=None,
+        )
+
+        assert settings.url == (
+            "postgresql+asyncpg://user:s3cret@db.example.com:5433/auth"
+        )
+
+    def test_database_settings_url_sqlite(self) -> None:
+        settings = DatabaseSettings(type="sqlite", name="local_auth", _env_file=None)
+
+        assert settings.url == "sqlite+aiosqlite:///local_auth.db"
+
+
+@pytest.mark.unit
+class TestJWTSettings:
+    def test_jwt_settings_requires_secret_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+
+        with pytest.raises(ValidationError):
+            JWTSettings(_env_file=None)  # type: ignore[call-arg]
+
+
+@pytest.mark.unit
+class TestSettings:
+    def test_settings_load_from_env_prefixes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("APP_NAME", "custom-auth")
+        monkeypatch.setenv("APP_ENVIRONMENT", "staging")
+        monkeypatch.setenv("DB_TYPE", "sqlite")
+        monkeypatch.setenv("DB_NAME", "env_db")
+        monkeypatch.setenv("JWT_SECRET_KEY", "env-secret-key")
+        monkeypatch.setenv("JWT_ALGORITHM", "HS384")
+        monkeypatch.setenv("LOGGING_LEVEL", "DEBUG")
+
+        settings = Settings(
+            app=AppSettings(_env_file=None),
+            db=DatabaseSettings(_env_file=None),
+            jwt=JWTSettings(_env_file=None),
+            logging=LoggingSettings(_env_file=None),
+            _env_file=None,
+        )
+
+        assert settings.app.name == "custom-auth"
+        assert settings.app.environment == "staging"
+        assert settings.db.type == "sqlite"
+        assert settings.db.name == "env_db"
+        assert settings.jwt.secret_key.get_secret_value() == "env-secret-key"
+        assert settings.jwt.algorithm == "HS384"
+        assert settings.logging.level == "DEBUG"
+
+    def test_settings_nested_defaults(self) -> None:
+        settings = Settings(
+            app=AppSettings(_env_file=None),
+            db=DatabaseSettings(_env_file=None),
+            jwt=JWTSettings(secret_key="required-secret", _env_file=None),
+            logging=LoggingSettings(_env_file=None),
+            _env_file=None,
+        )
+
+        assert settings.app.name == "auth-service"
+        assert settings.app.version == "0.1.0"
+        assert settings.db.type == "postgres"
+        assert settings.logging.level == "INFO"
+        assert settings.jwt.secret_key.get_secret_value() == "required-secret"

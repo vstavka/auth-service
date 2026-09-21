@@ -47,3 +47,10 @@ class TestEmail:
         email = Email("User@YANDEX.COM")
         with pytest.raises(FrozenInstanceError):
             email.value = "User2@yandex.com"
+
+    def test_invalid_email_error_includes_reason_in_details(self):
+        with pytest.raises(InvalidEmailError) as error:
+            Email("not-an-email")
+
+        assert error.value.details is not None
+        assert "reason" in error.value.details

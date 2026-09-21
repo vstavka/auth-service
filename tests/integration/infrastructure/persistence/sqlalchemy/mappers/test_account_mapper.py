@@ -93,6 +93,23 @@ class TestAccountOrmToDomain:
         account = account_orm_to_domain(orm_account)
         assert account.status is AccountStatus.ACTIVE
 
+    def test_orm_to_domain_accepts_public_id_as_str(self):
+        now = datetime.now(UTC)
+        public_id = uuid4()
+        orm_account = AccountORM(
+            id=1,
+            public_id=str(public_id),
+            email="user@example.com",
+            password_hash="hashed-value",
+            status=AccountStatus.ACTIVE,
+            created_at=now,
+            updated_at=now,
+        )
+
+        account = account_orm_to_domain(orm_account)
+
+        assert account.public_id.value == public_id
+
 
 class TestRoundTrip:
     def test_domain_to_orm_to_domain_preserves_data(self, domain_account: Account):

@@ -73,12 +73,16 @@ class TestRegisterAccount:
             self,
             use_case: RegisterAccountHandler,
             fake_uow: FakeUnitOfWork,
+            fake_password_hasher: FakePasswordHasher,
+            fake_token_service: FakeTokenService,
             account_id: UUID,
+            fixed_now: datetime,
     ) -> None:
+        raw_password = "StrongPassword123!"
         result = await use_case.execute(
             RegisterRequest(
                 email="User@Example.COM",
-                password="StrongPassword123!",
+                password=raw_password,
             )
         )
 
@@ -90,12 +94,18 @@ class TestRegisterAccount:
         assert account.public_id == UserId(account_id)
         assert account.email == Email("user@example.com")
         assert account.status is AccountStatus.ACTIVE
-        assert account.password_hash.value != "StrongPassword123!"
+        assert account.password_hash.value != raw_password
+        assert account.password_hash == fake_password_hasher.hash(raw_password)
+        assert account.created_at == fixed_now
+        assert account.updated_at == fixed_now
 
         assert result.access_token
         assert result.refresh_token
         assert result.access_token != result.refresh_token
         assert result.token_type == "bearer"
+        assert result.access_token_expires_at == fixed_now + fake_token_service._access_token_ttl
+        assert result.refresh_token_expires_at == fixed_now + fake_token_service._refresh_token_ttl
+        assert fake_token_service.issued_account_ids == [UserId(account_id)]
 
         assert fake_uow.commit_called is True
         assert fake_uow.rollback_called is False
@@ -107,6 +117,7 @@ class TestRegisterAccount:
             fake_uow: FakeUnitOfWork,
             fake_clock: FakeClock,
             fake_password_hasher: FakePasswordHasher,
+            account_id: UUID,
     ) -> None:
         existing_account = Account.create(
             public_id=UserId(
@@ -129,8 +140,10 @@ class TestRegisterAccount:
                 )
             )
 
+        assert await fake_uow.accounts.get_by_id(UserId(account_id)) is None
         assert fake_uow.commit_called is False
         assert fake_uow.rollback_called is True
+        assert fake_uow.closed is True
 
     async def test_does_not_create_account_when_password_is_invalid(
             self,

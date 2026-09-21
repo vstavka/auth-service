@@ -39,3 +39,8 @@ class TestPasswordHash:
         password_hash = PasswordHash(value=value)
         with pytest.raises(FrozenInstanceError):
             password_hash.value = "e99a20exampleExampleExampleExampleExampleExampleExample"
+
+    def test_accepts_empty_string(self):
+        password_hash = PasswordHash("")
+
+        assert password_hash.value == ""
