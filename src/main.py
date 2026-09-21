@@ -23,7 +23,6 @@ async def lifespan(app: FastAPI):
         service_version=settings.app.version,
         log_path=settings.logging.path,
     )
-
     container = Container()
     container.config.from_pydantic(settings)
 

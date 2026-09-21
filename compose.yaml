@@ -1,0 +1,36 @@
+x-app: &app
+  build: .
+  env_file:
+    - .env
+  environment:
+    DB_HOST: ${DB_HOST:-host.docker.internal}
+
+services:
+  migrate:
+    <<: *app
+    command: alembic upgrade head
+    restart: "no"
+
+  app:
+    <<: *app
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .git/
+            - .venv/
+            - __pycache__/
+            - .pytest_cache/
+            - .mypy_cache/
+            - .ruff_cache/
+        - action: rebuild
+          path: pyproject.toml
+        - action: rebuild
+          path: poetry.lock
