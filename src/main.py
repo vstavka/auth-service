@@ -6,6 +6,7 @@ from src.infrastructure.config.settings import Settings
 from src.infrastructure.di.containers import Container
 from src.infrastructure.logging.config import setup_logging
 from src.infrastructure.persistence.sqlalchemy.database import init_sqlite_schema
+from src.presentation.api.exception_handlers import register_exception_handlers
 from src.presentation.api.middlewares.logging_middleware import LoggingMiddleware
 from src.presentation.api.middlewares.request_id_middleware import RequestIDMiddleware
 from src.presentation.api.v1.router import router as v1_router
@@ -36,6 +37,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+register_exception_handlers(app)
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(RequestIDMiddleware)
 app.include_router(v1_router)

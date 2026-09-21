@@ -11,9 +11,8 @@ from pydantic import SecretStr
 from src.application.dto import AccessTokenPayload, TokenPair
 from src.application.ports.security import TokenService
 from src.application.ports.system import Clock
-from src.domain.exceptions.base import AppError
+from src.domain.exceptions.auth import AccessTokenInvalidError
 from src.domain.value_objects import UserId
-from src.shared.errors.codes import ErrorCode
 
 
 class JWTTokenService(TokenService):
@@ -97,17 +96,11 @@ class JWTTokenService(TokenService):
                     ],
                 },
             )
-        except InvalidTokenError as exc:
-            raise AppError(
-                code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
-                message="Access token is invalid or expired",
-            )
+        except InvalidTokenError:
+            raise AccessTokenInvalidError() from None
 
         if payload.get("typ") != self.ACCESS_TOKEN_TYPE:
-            raise AppError(
-                code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
-                message="Access token is invalid or expired",
-            )
+            raise AccessTokenInvalidError()
 
         try:
             return AccessTokenPayload(
@@ -117,11 +110,8 @@ class JWTTokenService(TokenService):
                     tz=UTC,
                 ),
             )
-        except (KeyError, TypeError, ValueError) as exc:
-            raise AppError(
-                code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
-                message="Access token is invalid or expired",
-            )
+        except (KeyError, TypeError, ValueError):
+            raise AccessTokenInvalidError() from None
 
     def hash_refresh_token(
             self,

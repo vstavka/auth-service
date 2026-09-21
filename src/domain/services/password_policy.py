@@ -21,16 +21,10 @@ class PasswordPolicy:
             )
 
         if not re.search(r"[a-zа-яё]", raw_password, re.IGNORECASE):
-            raise InvalidPasswordError(
-                details={"reason": "no_letter"},
-            )
+            raise InvalidPasswordError(details={"reason": "no_letter"})
 
         if not re.search(r"\d", raw_password):
-            raise InvalidPasswordError(
-                details={"reason": "no_digit"},
-            )
+            raise InvalidPasswordError(details={"reason": "no_digit"})
 
         if not re.search(r"[^a-zA-Zа-яА-ЯёЁ0-9\s]", raw_password):
-            raise InvalidPasswordError(
-                details={"reason": "no_special_character"},
-            )
+            raise InvalidPasswordError(details={"reason": "no_special_character"})

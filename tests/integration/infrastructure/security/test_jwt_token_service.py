@@ -3,7 +3,7 @@ from uuid import UUID
 
 import pytest
 
-from src.domain.exceptions.base import AppError
+from src.domain.exceptions.auth import AccessTokenInvalidError
 from src.domain.value_objects import UserId
 from src.infrastructure.security.jwt_token_service import JWTTokenService
 from src.shared.errors.codes import ErrorCode
@@ -87,7 +87,7 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
     ) -> None:
-        with pytest.raises(AppError) as error:
+        with pytest.raises(AccessTokenInvalidError) as error:
             token_service.verify_access_token(
                 "this-is-not-a-jwt",
             )
@@ -115,7 +115,7 @@ class TestJWTTokenService:
 
         tokens = issuer_service.issue_tokens(account_id)
 
-        with pytest.raises(AppError) as error:
+        with pytest.raises(AccessTokenInvalidError) as error:
             verifier_service.verify_access_token(
                 tokens.access_token,
             )
@@ -131,7 +131,7 @@ class TestJWTTokenService:
         clock.advance(timedelta(minutes=-16))
         tokens = token_service.issue_tokens(account_id)
 
-        with pytest.raises(AppError) as error:
+        with pytest.raises(AccessTokenInvalidError) as error:
             token_service.verify_access_token(
                 tokens.access_token,
             )
@@ -145,7 +145,7 @@ class TestJWTTokenService:
     ) -> None:
         tokens = token_service.issue_tokens(account_id)
 
-        with pytest.raises(AppError) as error:
+        with pytest.raises(AccessTokenInvalidError) as error:
             token_service.verify_access_token(
                 tokens.refresh_token,
             )
@@ -251,7 +251,7 @@ class TestJWTTokenService:
         )
         tokens = issuer.issue_tokens(account_id)
 
-        with pytest.raises(AppError) as error:
+        with pytest.raises(AccessTokenInvalidError) as error:
             verifier.verify_access_token(tokens.access_token)
 
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
@@ -275,7 +275,7 @@ class TestJWTTokenService:
         )
         tokens = issuer.issue_tokens(account_id)
 
-        with pytest.raises(AppError) as error:
+        with pytest.raises(AccessTokenInvalidError) as error:
             verifier.verify_access_token(tokens.access_token)
 
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
@@ -302,7 +302,7 @@ class TestJWTTokenService:
             algorithm="HS256",
         )
 
-        with pytest.raises(AppError) as error:
+        with pytest.raises(AccessTokenInvalidError) as error:
             token_service.verify_access_token(token)
 
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
@@ -328,7 +328,7 @@ class TestJWTTokenService:
             algorithm="HS256",
         )
 
-        with pytest.raises(AppError) as error:
+        with pytest.raises(AccessTokenInvalidError) as error:
             token_service.verify_access_token(token)
 
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID

@@ -32,7 +32,9 @@ class SQLAccountRepository(AccountRepository):
                 "Account with email=%s already exists, integrity constraint violated",
                 account.email,
             )
-            raise EmailAlreadyRegisteredError(str(account.email)) from exc
+            raise EmailAlreadyRegisteredError(
+                details={"email": account.email.value},
+            ) from exc
         except Exception:
             logger.error(
                 "Unexpected error while adding account email=%s", account.email, exc_info=True

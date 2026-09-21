@@ -16,7 +16,7 @@ class Email:
                 check_deliverability=False,
             )
         except EmailNotValidError as exc:
-            raise InvalidEmailError(str(exc))
+            raise InvalidEmailError(details={"reason": str(exc)})
 
         object.__setattr__(self, "value", validated.normalized)
 

@@ -3,9 +3,8 @@ from datetime import timedelta
 from src.application.dto import AccessTokenPayload, TokenPair
 from src.application.ports.security import TokenService
 from src.application.ports.system import Clock
-from src.domain.exceptions.base import AppError
+from src.domain.exceptions.auth import AccessTokenInvalidError
 from src.domain.value_objects import UserId
-from src.shared.errors.codes import ErrorCode
 
 
 class FakeTokenService(TokenService):
@@ -65,16 +64,10 @@ class FakeTokenService(TokenService):
         payload = self._access_tokens.get(access_token)
 
         if payload is None:
-            raise AppError(
-                code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
-                message="Access token is invalid or expired",
-            )
+            raise AccessTokenInvalidError()
 
         if payload.expires_at <= self._clock.now():
-            raise AppError(
-                code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
-                message="Access token is invalid or expired",
-            )
+            raise AccessTokenInvalidError()
 
         return payload
 
