@@ -1,6 +1,5 @@
 # auth-service
 
-
 ## License
 
 Copyright 2026 Vstavka contributors.
