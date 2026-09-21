@@ -13,6 +13,7 @@ _ERROR_STATUS: dict[ErrorCode, int] = {
     ErrorCode.AUTH_REFRESH_TOKEN_INVALID: 401,
     ErrorCode.AUTH_EMAIL_NOT_VERIFIED: 403,
     ErrorCode.AUTH_ACCOUNT_DISABLED: 403,
+    ErrorCode.AUTH_SESSION_NOT_FOUND: 404,
     ErrorCode.USER_NOT_FOUND: 404,
     ErrorCode.INTERNAL_ERROR: 500,
 }

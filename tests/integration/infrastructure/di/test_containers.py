@@ -2,7 +2,16 @@ from datetime import timedelta
 
 import pytest
 
-from src.application.commands import RegisterAccountHandler
+from src.application.commands import (
+    ChangeEmailHandler,
+    ChangePasswordHandler,
+    LoginAccountHandler,
+    RefreshTokensHandler,
+    RegisterAccountHandler,
+    RevokeAllSessionsHandler,
+    RevokeSessionHandler,
+)
+from src.application.queries import GetMeHandler, ListSessionsHandler
 from src.infrastructure.di.containers import Container
 from src.infrastructure.security import Argon2PasswordHasher, JWTTokenService
 from src.infrastructure.system import SystemClock, UUID7IdGenerator
@@ -41,6 +50,14 @@ class TestContainer:
         assert isinstance(container.token_service(), JWTTokenService)
         assert isinstance(container.unit_of_work(), SQLUnitOfWork)
         assert isinstance(container.register_account_handler(), RegisterAccountHandler)
+        assert isinstance(container.login_account_handler(), LoginAccountHandler)
+        assert isinstance(container.refresh_tokens_handler(), RefreshTokensHandler)
+        assert isinstance(container.change_email_handler(), ChangeEmailHandler)
+        assert isinstance(container.change_password_handler(), ChangePasswordHandler)
+        assert isinstance(container.revoke_session_handler(), RevokeSessionHandler)
+        assert isinstance(container.revoke_all_sessions_handler(), RevokeAllSessionsHandler)
+        assert isinstance(container.get_me_handler(), GetMeHandler)
+        assert isinstance(container.list_sessions_handler(), ListSessionsHandler)
 
     def test_token_service_receives_jwt_ttl_issuer_algorithm(
             self,

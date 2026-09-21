@@ -1,7 +1,7 @@
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
 
-from src.infrastructure.persistence.sqlalchemy.models.base import Base
+from src.infrastructure.persistence.sqlalchemy.models import Base
 
 
 @pytest_asyncio.fixture

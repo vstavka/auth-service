@@ -1,7 +1,7 @@
 from typing import Protocol
 
 from src.application.dto import TokenPair, AccessTokenPayload
-from src.domain.value_objects import UserId
+from src.domain.value_objects import SessionId, UserId
 
 
 class TokenService(Protocol):
@@ -10,6 +10,7 @@ class TokenService(Protocol):
             self,
             *,
             account_id: UserId,
+            session_id: SessionId,
     ) -> TokenPair:
         """Создать JWT access token и случайный refresh token."""
         ...

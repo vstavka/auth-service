@@ -42,6 +42,7 @@ class TestAdd:
         await repository.add(account)
         fetched = await repository.get_by_id(account.public_id)
 
+        assert account.id is not None
         assert fetched is not None
         assert fetched.email.value == account.email.value
 
@@ -160,3 +161,59 @@ class TestGetByEmail:
         assert fetched.updated_at.replace(tzinfo=None) == account.updated_at.replace(
             tzinfo=None
         )
+
+
+class TestGetByInternalId:
+    @pytest.mark.asyncio
+    async def test_returns_account_by_internal_id(
+        self, repository: SQLAccountRepository
+    ):
+        account = make_account(email="internal-id@example.com")
+        await repository.add(account)
+
+        fetched = await repository.get_by_internal_id(account.id)
+
+        assert fetched is not None
+        assert fetched.public_id == account.public_id
+
+    @pytest.mark.asyncio
+    async def test_returns_none_for_missing_internal_id(
+        self, repository: SQLAccountRepository
+    ):
+        result = await repository.get_by_internal_id(999_999)
+        assert result is None
+
+
+class TestSave:
+    @pytest.mark.asyncio
+    async def test_save_persists_email_and_password_changes(
+        self, repository: SQLAccountRepository
+    ):
+        account = make_account(email="before@example.com")
+        await repository.add(account)
+        changed_at = datetime.now(UTC)
+        account.change_email(email=Email("after@example.com"), now=changed_at)
+        account.change_password(
+            new_password_hash=PasswordHash("new-hashed-value"),
+            now=changed_at,
+        )
+
+        await repository.save(account)
+
+        fetched = await repository.get_by_id(account.public_id)
+        assert fetched is not None
+        assert fetched.email.value == "after@example.com"
+        assert fetched.password_hash.value == "new-hashed-value"
+
+    @pytest.mark.asyncio
+    async def test_save_duplicate_email_raises_domain_error(
+        self, repository: SQLAccountRepository
+    ):
+        first = make_account(email="taken@example.com")
+        second = make_account(email="free@example.com")
+        await repository.add(first)
+        await repository.add(second)
+        second.change_email(email=Email("taken@example.com"), now=datetime.now(UTC))
+
+        with pytest.raises(EmailAlreadyRegisteredError):
+            await repository.save(second)

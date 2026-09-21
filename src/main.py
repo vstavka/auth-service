@@ -10,7 +10,8 @@ from src.presentation.api.exception_handlers import register_exception_handlers
 from src.presentation.api.middlewares.logging_middleware import LoggingMiddleware
 from src.presentation.api.middlewares.request_id_middleware import RequestIDMiddleware
 from src.presentation.api.v1.router import router as v1_router
-from src.presentation.api.v1.routers import auth
+from src.presentation.api.v1 import dependencies as v1_dependencies
+from src.presentation.api.v1.routers import auth, me, sessions
 
 
 @asynccontextmanager
@@ -26,7 +27,7 @@ async def lifespan(app: FastAPI):
     container = Container()
     container.config.from_pydantic(settings)
 
-    container.wire(modules=[auth])
+    container.wire(modules=[auth, me, sessions, v1_dependencies])
     app.container = container
 
     if settings.db.type == "sqlite":

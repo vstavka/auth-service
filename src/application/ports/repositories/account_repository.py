@@ -13,3 +13,9 @@ class AccountRepository(Protocol):
 
     async def get_by_email(self, email: Email) -> Account | None:
         """Возвращает аккаунт по нормализованному email."""
+
+    async def get_by_internal_id(self, account_id: int) -> Account | None:
+        """Возвращает аккаунт по внутреннему числовому идентификатору."""
+
+    async def save(self, account: Account) -> None:
+        """Сохраняет изменения существующего аккаунта."""

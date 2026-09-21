@@ -95,7 +95,7 @@ class TestRegisterDomainErrorsMapped:
             "email": "dup@example.com",
             "password": "StrongPassword123!",
         }
-        assert api_client.post("/v1/auth/register", json=payload).status_code == 200
+        assert api_client.post("/v1/auth/register", json=payload).status_code == 201
 
         response = api_client.post("/v1/auth/register", json=payload)
 

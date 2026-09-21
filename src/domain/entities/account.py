@@ -44,6 +44,18 @@ class Account:
         self.password_hash = new_password_hash
         self.updated_at = now
 
+    def change_email(
+            self,
+            *,
+            email: Email,
+            now: datetime,
+    ) -> None:
+        if self.email == email:
+            return
+
+        self.email = email
+        self.updated_at = now
+
     def disable(self, now: datetime) -> None:
         if self.status is AccountStatus.DISABLED:
             return

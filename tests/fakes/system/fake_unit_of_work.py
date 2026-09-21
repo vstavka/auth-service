@@ -1,7 +1,7 @@
 from types import TracebackType
 
 from src.application.ports.system.unit_of_work import UnitOfWork
-from tests.fakes.repositories import FakeAccountRepository
+from tests.fakes.repositories import FakeAccountRepository, FakeSessionRepository
 
 
 class FakeUnitOfWork(UnitOfWork):
@@ -10,6 +10,7 @@ class FakeUnitOfWork(UnitOfWork):
         self.rollback_called = False
         self.closed = False
         self.accounts = FakeAccountRepository()
+        self.sessions = FakeSessionRepository()
 
     async def __aenter__(self) -> "FakeUnitOfWork":
         return self

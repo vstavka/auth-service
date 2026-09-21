@@ -4,7 +4,7 @@ from uuid import UUID
 import pytest
 
 from src.domain.exceptions.auth import AccessTokenInvalidError
-from src.domain.value_objects import UserId
+from src.domain.value_objects import SessionId, UserId
 from src.infrastructure.security.jwt_token_service import JWTTokenService
 from src.shared.errors.codes import ErrorCode
 from tests.fakes.system.fake_clock import FakeClock
@@ -38,12 +38,19 @@ class TestJWTTokenService:
             UUID("018f4e9e-4ca1-7ca3-9e8f-6ab7d7c6190c"),
         )
 
+    @pytest.fixture
+    def session_id(self) -> SessionId:
+        return SessionId(
+            UUID("018f4e9e-4ca1-7ca3-9e8f-6ab7d7c6190d"),
+        )
+
     async def test_issues_access_and_refresh_tokens(
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
-        tokens = token_service.issue_tokens(account_id)
+        tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         assert isinstance(tokens.access_token, str)
         assert isinstance(tokens.refresh_token, str)
@@ -58,9 +65,10 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
             clock: FakeClock,
     ) -> None:
-        tokens = token_service.issue_tokens(account_id)
+        tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         assert tokens.access_token_expires_at == (
                 clock.now() + timedelta(minutes=15)
@@ -73,14 +81,16 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
-        tokens = token_service.issue_tokens(account_id)
+        tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         payload = token_service.verify_access_token(
             tokens.access_token,
         )
 
         assert payload.account_id == account_id
+        assert payload.session_id == session_id
         assert payload.expires_at == tokens.access_token_expires_at
 
     async def test_rejects_unknown_or_malformed_access_token(
@@ -98,6 +108,7 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
             clock: FakeClock,
     ) -> None:
         issuer_service = JWTTokenService(
@@ -113,7 +124,7 @@ class TestJWTTokenService:
             audience="auth-api",
         )
 
-        tokens = issuer_service.issue_tokens(account_id)
+        tokens = issuer_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         with pytest.raises(AccessTokenInvalidError) as error:
             verifier_service.verify_access_token(
@@ -126,10 +137,11 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
             clock: FakeClock,
     ) -> None:
         clock.advance(timedelta(minutes=-16))
-        tokens = token_service.issue_tokens(account_id)
+        tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         with pytest.raises(AccessTokenInvalidError) as error:
             token_service.verify_access_token(
@@ -142,8 +154,9 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
-        tokens = token_service.issue_tokens(account_id)
+        tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         with pytest.raises(AccessTokenInvalidError) as error:
             token_service.verify_access_token(
@@ -156,9 +169,10 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
-        first_tokens = token_service.issue_tokens(account_id)
-        second_tokens = token_service.issue_tokens(account_id)
+        first_tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
+        second_tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         assert first_tokens.refresh_token != second_tokens.refresh_token
 
@@ -166,8 +180,9 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
-        tokens = token_service.issue_tokens(account_id)
+        tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         first_hash = token_service.hash_refresh_token(
             tokens.refresh_token,
@@ -183,9 +198,10 @@ class TestJWTTokenService:
             self,
             token_service: JWTTokenService,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
-        first_tokens = token_service.issue_tokens(account_id)
-        second_tokens = token_service.issue_tokens(account_id)
+        first_tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
+        second_tokens = token_service.issue_tokens(account_id=account_id, session_id=session_id)
 
         first_hash = token_service.hash_refresh_token(
             first_tokens.refresh_token,
@@ -220,6 +236,7 @@ class TestJWTTokenService:
             self,
             clock: FakeClock,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
         from pydantic import SecretStr
 
@@ -227,7 +244,7 @@ class TestJWTTokenService:
             secret_key=SecretStr("secret-from-secret-str"),
             clock=clock,
         )
-        tokens = service.issue_tokens(account_id)
+        tokens = service.issue_tokens(account_id=account_id, session_id=session_id)
         payload = service.verify_access_token(tokens.access_token)
 
         assert payload.account_id == account_id
@@ -236,6 +253,7 @@ class TestJWTTokenService:
             self,
             clock: FakeClock,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
         issuer = JWTTokenService(
             secret_key="shared-secret",
@@ -249,7 +267,7 @@ class TestJWTTokenService:
             issuer="issuer-b",
             audience="auth-api",
         )
-        tokens = issuer.issue_tokens(account_id)
+        tokens = issuer.issue_tokens(account_id=account_id, session_id=session_id)
 
         with pytest.raises(AccessTokenInvalidError) as error:
             verifier.verify_access_token(tokens.access_token)
@@ -260,6 +278,7 @@ class TestJWTTokenService:
             self,
             clock: FakeClock,
             account_id: UserId,
+            session_id: SessionId,
     ) -> None:
         issuer = JWTTokenService(
             secret_key="shared-secret",
@@ -273,7 +292,7 @@ class TestJWTTokenService:
             issuer="auth-service",
             audience="audience-b",
         )
-        tokens = issuer.issue_tokens(account_id)
+        tokens = issuer.issue_tokens(account_id=account_id, session_id=session_id)
 
         with pytest.raises(AccessTokenInvalidError) as error:
             verifier.verify_access_token(tokens.access_token)
@@ -281,6 +300,35 @@ class TestJWTTokenService:
         assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
 
     def test_verify_rejects_non_access_typ(
+            self,
+            token_service: JWTTokenService,
+            account_id: UserId,
+            session_id: SessionId,
+            clock: FakeClock,
+    ) -> None:
+        import jwt
+
+        now = clock.now().replace(microsecond=0)
+        token = jwt.encode(
+            {
+                "sub": str(account_id.value),
+                "sid": str(session_id.value),
+                "typ": "refresh",
+                "iss": "auth-service",
+                "aud": "auth-api",
+                "iat": now,
+                "exp": now + timedelta(minutes=15),
+            },
+            key="test-secret-key-that-is-long-enough-for-tests",
+            algorithm="HS256",
+        )
+
+        with pytest.raises(AccessTokenInvalidError) as error:
+            token_service.verify_access_token(token)
+
+        assert error.value.code == ErrorCode.AUTH_ACCESS_TOKEN_INVALID
+
+    def test_verify_rejects_missing_sid(
             self,
             token_service: JWTTokenService,
             account_id: UserId,
@@ -292,7 +340,7 @@ class TestJWTTokenService:
         token = jwt.encode(
             {
                 "sub": str(account_id.value),
-                "typ": "refresh",
+                "typ": "access",
                 "iss": "auth-service",
                 "aud": "auth-api",
                 "iat": now,
@@ -318,6 +366,7 @@ class TestJWTTokenService:
         token = jwt.encode(
             {
                 "sub": "not-a-uuid",
+                "sid": str(UUID("018f4e9e-4ca1-7ca3-9e8f-6ab7d7c6190d")),
                 "typ": "access",
                 "iss": "auth-service",
                 "aud": "auth-api",

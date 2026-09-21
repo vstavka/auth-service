@@ -4,7 +4,7 @@ from src.application.dto import AccessTokenPayload, TokenPair
 from src.application.ports.security import TokenService
 from src.application.ports.system import Clock
 from src.domain.exceptions.auth import AccessTokenInvalidError
-from src.domain.value_objects import UserId
+from src.domain.value_objects import SessionId, UserId
 
 
 class FakeTokenService(TokenService):
@@ -23,11 +23,14 @@ class FakeTokenService(TokenService):
         self._access_tokens: dict[str, AccessTokenPayload] = {}
 
         self.issued_account_ids: list[UserId] = []
+        self.issued_session_ids: list[SessionId] = []
         self.issued_refresh_tokens: list[str] = []
 
     def issue_tokens(
             self,
+            *,
             account_id: UserId,
+            session_id: SessionId,
     ) -> TokenPair:
         now = self._clock.now()
 
@@ -45,9 +48,11 @@ class FakeTokenService(TokenService):
 
         self._access_tokens[access_token] = AccessTokenPayload(
             account_id=account_id,
+            session_id=session_id,
             expires_at=access_expires_at,
         )
         self.issued_account_ids.append(account_id)
+        self.issued_session_ids.append(session_id)
         self.issued_refresh_tokens.append(refresh_token)
 
         return TokenPair(
