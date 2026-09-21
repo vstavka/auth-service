@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from src.application.dto import TokenPair
+from src.application.dto import TokenPair, RegisterRequest
 from src.application.ports.security import PasswordHasher, TokenService
 from src.application.ports.system import Clock, IdGenerator, UnitOfWork
 from src.domain.entities import Account
@@ -12,13 +12,7 @@ from src.domain.value_objects import Email, UserId
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
-class RegisterAccountCommand:
-    email: str
-    password: str
-
-
-class RegisterAccount:
+class RegisterAccountHandler:
     def __init__(
             self,
             *,
@@ -38,7 +32,7 @@ class RegisterAccount:
 
     async def execute(
             self,
-            command: RegisterAccountCommand,
+            command: RegisterRequest,
     ) -> TokenPair:
         email = Email(command.email)
         self._password_policy.validate(command.password)
@@ -62,7 +56,7 @@ class RegisterAccount:
                 raise EmailAlreadyRegisteredError()
 
             account = Account.create(
-                account_id=account_id,
+                public_id=account_id,
                 email=email,
                 password_hash=password_hash,
                 now=self._clock.now(),
@@ -74,16 +68,16 @@ class RegisterAccount:
         logger.info(
             "Account successfully registered",
             extra={
-                "account_id": str(account.id),
+                "account_id": str(account.public_id),
                 "email": account.email.value,
             },
         )
 
-        tokens = self._token_service.issue_tokens(account.id)
+        tokens = self._token_service.issue_tokens(account.public_id)
 
         logger.info(
             "Tokens issued after registration",
-            extra={"account_id": str(account.id)},
+            extra={"account_id": str(account.public_id)},
         )
 
         return tokens

@@ -7,7 +7,8 @@ from src.domain.entities import Account
 from src.domain.enums import AccountStatus
 from src.domain.value_objects import Email, PasswordHash, UserId
 
-ACCOUNT_ID = UserId(
+ACCOUNT_ID = 1
+ACCOUNT_PUBLIC_ID = UserId(
     value=UUID("12345678-1234-5678-1234-567812345678")
 )
 EMAIL = Email("User@yandex.ru")
@@ -20,7 +21,8 @@ CREATED_AT = datetime(2026, 9, 15, 18, 0, tzinfo=timezone.utc)
 @pytest.fixture
 def account() -> Account:
     return Account.create(
-        account_id=ACCOUNT_ID,
+        id = ACCOUNT_ID,
+        public_id=ACCOUNT_PUBLIC_ID,
         email=EMAIL,
         password_hash=INITIAL_PASSWORD_HASH,
         now=CREATED_AT,
@@ -31,6 +33,7 @@ def account() -> Account:
 class TestAccount:
     def test_create_account(self, account: Account):
         assert account.id == ACCOUNT_ID
+        assert account.public_id == ACCOUNT_PUBLIC_ID
         assert account.email == EMAIL
         assert account.password_hash == INITIAL_PASSWORD_HASH
         assert account.status is AccountStatus.ACTIVE

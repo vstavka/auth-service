@@ -7,7 +7,8 @@ from src.domain.value_objects import UserId, Email, PasswordHash
 
 @dataclass(slots=True)
 class Account:
-    id: UserId
+    id: int|None
+    public_id: UserId
     email: Email
     status: AccountStatus
     password_hash: PasswordHash
@@ -18,13 +19,15 @@ class Account:
     def create(
             cls,
             *,
-            account_id: UserId,
+            public_id: UserId,
             email: Email,
             password_hash: PasswordHash,
             now: datetime,
+            id:int = None
     ) -> "Account":
         return cls(
-            id=account_id,
+            id=id,
+            public_id=public_id,
             email=email,
             password_hash=password_hash,
             status=AccountStatus.ACTIVE,

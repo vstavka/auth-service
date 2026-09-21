@@ -6,6 +6,7 @@ from uuid import UUID
 
 import jwt
 from jwt.exceptions import InvalidTokenError
+from pydantic import SecretStr
 
 from src.application.dto import AccessTokenPayload, TokenPair
 from src.application.ports.security import TokenService
@@ -16,18 +17,18 @@ from src.shared.errors.codes import ErrorCode
 
 
 class JWTTokenService(TokenService):
-    ALGORITHM = "HS256"
     ACCESS_TOKEN_TYPE = "access"
 
     def __init__(
             self,
             *,
-            secret_key: str,
+            secret_key: str | SecretStr,
             clock: Clock,
             access_token_ttl: timedelta = timedelta(minutes=15),
             refresh_token_ttl: timedelta = timedelta(days=7),
             issuer: str = "auth-service",
             audience: str = "auth-api",
+            algorithm: str = "HS256",
     ) -> None:
         if not secret_key:
             raise ValueError("secret_key must not be empty")
@@ -38,7 +39,10 @@ class JWTTokenService(TokenService):
         if refresh_token_ttl <= timedelta():
             raise ValueError("refresh_token_ttl must be positive")
 
-        self._secret_key = secret_key
+        self._secret_key = (
+            secret_key.get_secret_value() if isinstance(secret_key, SecretStr) else secret_key
+        )
+        self._algorithm = algorithm
         self._clock = clock
         self._access_token_ttl = access_token_ttl
         self._refresh_token_ttl = refresh_token_ttl
@@ -79,7 +83,7 @@ class JWTTokenService(TokenService):
             payload = jwt.decode(
                 jwt=access_token,
                 key=self._secret_key,
-                algorithms=[self.ALGORITHM],
+                algorithms=[self._algorithm],
                 issuer=self._issuer,
                 audience=self._audience,
                 options={
@@ -146,5 +150,5 @@ class JWTTokenService(TokenService):
         return jwt.encode(
             payload=payload,
             key=self._secret_key,
-            algorithm=self.ALGORITHM,
+            algorithm=self._algorithm,
         )

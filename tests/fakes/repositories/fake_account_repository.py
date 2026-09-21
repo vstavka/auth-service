@@ -9,7 +9,7 @@ class FakeAccountRepository(AccountRepository):
         self._accounts: dict[UserId, Account] = {}
 
     async def add(self, account: Account) -> None:
-        self._accounts[account.id] = account
+        self._accounts[account.public_id] = account
 
     async def get_by_id(self, account_id: UserId) -> Account | None:
         return self._accounts.get(account_id)

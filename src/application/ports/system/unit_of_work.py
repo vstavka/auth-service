@@ -1,17 +1,16 @@
 from abc import abstractmethod
+from typing import Protocol
 
 from src.application.ports.repositories.account_repository import AccountRepository
 
 
-class UnitOfWork:
+class UnitOfWork(Protocol):
     """Transaction context with access to repositories."""
     accounts: AccountRepository
 
-    @abstractmethod
     async def commit(self) -> None:
         pass
 
-    @abstractmethod
     async def rollback(self) -> None:
         pass
 

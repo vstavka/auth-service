@@ -3,10 +3,8 @@ from uuid import UUID
 
 import pytest
 
-from src.application.commands.register_account import (
-    RegisterAccount,
-    RegisterAccountCommand,
-)
+from src.application.commands import RegisterAccountHandler
+from src.application.dto import RegisterRequest
 from src.domain.entities import Account
 from src.domain.enums import AccountStatus
 from src.domain.exceptions.email import EmailAlreadyRegisteredError, InvalidEmailError
@@ -61,8 +59,8 @@ class TestRegisterAccount:
             fake_id_generator: FakeIdGenerator,
             fake_password_hasher: FakePasswordHasher,
             fake_token_service: FakeTokenService,
-    ) -> RegisterAccount:
-        return RegisterAccount(
+    ) -> RegisterAccountHandler:
+        return RegisterAccountHandler(
             uow=fake_uow,
             password_policy=PasswordPolicy(),
             password_hasher=fake_password_hasher,
@@ -73,12 +71,12 @@ class TestRegisterAccount:
 
     async def test_registers_new_account_and_returns_tokens(
             self,
-            use_case: RegisterAccount,
+            use_case: RegisterAccountHandler,
             fake_uow: FakeUnitOfWork,
             account_id: UUID,
     ) -> None:
         result = await use_case.execute(
-            RegisterAccountCommand(
+            RegisterRequest(
                 email="User@Example.COM",
                 password="StrongPassword123!",
             )
@@ -89,7 +87,7 @@ class TestRegisterAccount:
         )
 
         assert account is not None
-        assert account.id == UserId(account_id)
+        assert account.public_id == UserId(account_id)
         assert account.email == Email("user@example.com")
         assert account.status is AccountStatus.ACTIVE
         assert account.password_hash.value != "StrongPassword123!"
@@ -105,13 +103,13 @@ class TestRegisterAccount:
 
     async def test_rejects_registration_when_email_exists(
             self,
-            use_case: RegisterAccount,
+            use_case: RegisterAccountHandler,
             fake_uow: FakeUnitOfWork,
             fake_clock: FakeClock,
             fake_password_hasher: FakePasswordHasher,
     ) -> None:
         existing_account = Account.create(
-            account_id=UserId(
+            public_id=UserId(
                 UUID("018f4e9e-4ca1-7ca3-9e8f-6ab7d7c6190d"),
             ),
             email=Email("user@example.com"),
@@ -125,7 +123,7 @@ class TestRegisterAccount:
 
         with pytest.raises(EmailAlreadyRegisteredError):
             await use_case.execute(
-                RegisterAccountCommand(
+                RegisterRequest(
                     email="USER@example.com",
                     password="StrongPassword123!",
                 )
@@ -136,12 +134,12 @@ class TestRegisterAccount:
 
     async def test_does_not_create_account_when_password_is_invalid(
             self,
-            use_case: RegisterAccount,
+            use_case: RegisterAccountHandler,
             fake_uow: FakeUnitOfWork,
     ) -> None:
         with pytest.raises(InvalidPasswordError):
             await use_case.execute(
-                RegisterAccountCommand(
+                RegisterRequest(
                     email="user@example.com",
                     password="123",
                 )
@@ -156,12 +154,12 @@ class TestRegisterAccount:
 
     async def test_does_not_create_account_when_email_is_invalid(
             self,
-            use_case: RegisterAccount,
+            use_case: RegisterAccountHandler,
             fake_uow: FakeUnitOfWork,
     ) -> None:
         with pytest.raises(InvalidEmailError):
             await use_case.execute(
-                RegisterAccountCommand(
+                RegisterRequest(
                     email="not-an-email",
                     password="StrongPassword123!",
                 )
