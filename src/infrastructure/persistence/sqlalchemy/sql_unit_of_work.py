@@ -3,7 +3,10 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.application.ports.system import UnitOfWork
-from src.infrastructure.persistence.sqlalchemy.repositories import SQLAccountRepository
+from src.infrastructure.persistence.sqlalchemy.repositories import (
+    SQLAccountRepository,
+    SQLSessionRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +15,7 @@ class SQLUnitOfWork(UnitOfWork):
     """Transaction context with access to repositories."""
 
     accounts: SQLAccountRepository
+    sessions: SQLSessionRepository
     _session: AsyncSession | None = None
 
     def __init__(self, session_factory: async_sessionmaker):
@@ -23,6 +27,7 @@ class SQLUnitOfWork(UnitOfWork):
             raise RuntimeError("UnitOfWork is already active")
         self._session = self._session_factory()
         self.accounts = SQLAccountRepository(self._session)
+        self.sessions = SQLSessionRepository(self._session)
         logger.debug("UnitOfWork started, session=%s", id(self._session))
 
     async def commit(self) -> None:

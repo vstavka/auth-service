@@ -65,6 +65,38 @@ class TestAccount:
         assert account.status is AccountStatus.ACTIVE
         assert account.is_active is True
 
+    def test_change_email(self, account: Account):
+        changed_at = datetime(
+            2026,
+            9,
+            15,
+            18,
+            5,
+            tzinfo=timezone.utc,
+        )
+        new_email = Email("new.user@yandex.ru")
+
+        account.change_email(email=new_email, now=changed_at)
+
+        assert account.email == new_email
+        assert account.created_at == CREATED_AT
+        assert account.updated_at == changed_at
+
+    def test_change_email_same_value_does_not_change_updated_at(self, account: Account):
+        attempted_at = datetime(
+            2026,
+            9,
+            15,
+            18,
+            5,
+            tzinfo=timezone.utc,
+        )
+
+        account.change_email(email=EMAIL, now=attempted_at)
+
+        assert account.email == EMAIL
+        assert account.updated_at == CREATED_AT
+
     def test_disable_account(self, account: Account):
         disabled_at = datetime(
             2026,

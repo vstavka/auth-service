@@ -32,12 +32,15 @@ class SQLAccountRepository(AccountRepository):
                 "Account with email=%s already exists, integrity constraint violated",
                 account.email,
             )
-            raise EmailAlreadyRegisteredError(str(account.email)) from exc
+            raise EmailAlreadyRegisteredError(
+                details={"email": account.email.value},
+            ) from exc
         except Exception:
             logger.error(
                 "Unexpected error while adding account email=%s", account.email, exc_info=True
             )
             raise
+        account.id = account_orm.id
         logger.debug("Account added successfully email=%s", account.email)
 
     async def get_by_id(self, account_id: UserId) -> Account | None:
@@ -62,3 +65,41 @@ class SQLAccountRepository(AccountRepository):
             logger.debug("Account not found email=%s", email.value)
             return None
         return account_orm_to_domain(entity)
+
+    async def get_by_internal_id(self, account_id: int) -> Account | None:
+        """Возвращает аккаунт по внутреннему числовому идентификатору."""
+        logger.debug("Fetching account by internal id=%s", account_id)
+        stmt = select(AccountORM).where(AccountORM.id == account_id)
+        result = await self._session.execute(stmt)
+        entity = result.scalar_one_or_none()
+        if entity is None:
+            logger.debug("Account not found internal id=%s", account_id)
+            return None
+        return account_orm_to_domain(entity)
+
+    async def save(self, account: Account) -> None:
+        """Сохраняет изменения существующего аккаунта."""
+        if account.id is None:
+            raise RuntimeError("Cannot save account without id")
+
+        logger.debug("Saving account id=%s", account.id)
+        stmt = select(AccountORM).where(AccountORM.id == account.id)
+        result = await self._session.execute(stmt)
+        entity = result.scalar_one_or_none()
+        if entity is None:
+            raise RuntimeError(f"Account id={account.id} not found")
+
+        entity.email = account.email.value
+        entity.status = account.status
+        entity.password_hash = account.password_hash.value
+        entity.updated_at = account.updated_at
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            logger.info(
+                "Account with email=%s already exists, integrity constraint violated",
+                account.email,
+            )
+            raise EmailAlreadyRegisteredError(
+                details={"email": account.email.value},
+            ) from exc

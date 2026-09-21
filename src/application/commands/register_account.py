@@ -1,9 +1,9 @@
 import logging
-from dataclasses import dataclass
 
 from src.application.dto import TokenPair, RegisterRequest
 from src.application.ports.security import PasswordHasher, TokenService
 from src.application.ports.system import Clock, IdGenerator, UnitOfWork
+from src.application.services import issue_session
 from src.domain.entities import Account
 from src.domain.exceptions.email import EmailAlreadyRegisteredError
 from src.domain.services.password_policy import PasswordPolicy
@@ -63,6 +63,16 @@ class RegisterAccountHandler:
             )
 
             await self._uow.accounts.add(account)
+            tokens = await issue_session(
+                uow=self._uow,
+                token_service=self._token_service,
+                id_generator=self._id_generator,
+                clock=self._clock,
+                account=account,
+                ip=command.ip,
+                user_agent=command.user_agent,
+                device_info=command.device_info,
+            )
             await self._uow.commit()
 
         logger.info(
@@ -72,8 +82,6 @@ class RegisterAccountHandler:
                 "email": account.email.value,
             },
         )
-
-        tokens = self._token_service.issue_tokens(account.public_id)
 
         logger.info(
             "Tokens issued after registration",

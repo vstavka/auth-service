@@ -30,7 +30,7 @@ class TestAppStartup:
                     "password": "StrongPassword123!",
                 },
             )
-            assert response.status_code == 200
+            assert response.status_code == 201
 
     def test_lifespan_wires_container_and_handler(self, sqlite_env: None) -> None:
         from src.application.commands import RegisterAccountHandler
@@ -48,7 +48,7 @@ class TestAppStartup:
                     "password": "StrongPassword123!",
                 },
             )
-            assert response.status_code == 200
+            assert response.status_code == 201
 
     @pytest.mark.asyncio
     async def test_sqlite_schema_initialized_when_db_type_sqlite(

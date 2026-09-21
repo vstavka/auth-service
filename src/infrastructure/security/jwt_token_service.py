@@ -11,9 +11,8 @@ from pydantic import SecretStr
 from src.application.dto import AccessTokenPayload, TokenPair
 from src.application.ports.security import TokenService
 from src.application.ports.system import Clock
-from src.domain.exceptions.base import AppError
-from src.domain.value_objects import UserId
-from src.shared.errors.codes import ErrorCode
+from src.domain.exceptions.auth import AccessTokenInvalidError
+from src.domain.value_objects import SessionId, UserId
 
 
 class JWTTokenService(TokenService):
@@ -55,7 +54,9 @@ class JWTTokenService(TokenService):
 
     def issue_tokens(
             self,
+            *,
             account_id: UserId,
+            session_id: SessionId,
     ) -> TokenPair:
         now = self._truncate_to_seconds(self._clock.now())
         access_token_expires_at = now + self._access_token_ttl
@@ -63,6 +64,7 @@ class JWTTokenService(TokenService):
 
         access_token = self._create_access_token(
             account_id=account_id,
+            session_id=session_id,
             issued_at=now,
             expires_at=access_token_expires_at,
         )
@@ -89,6 +91,7 @@ class JWTTokenService(TokenService):
                 options={
                     "require": [
                         "sub",
+                        "sid",
                         "typ",
                         "iss",
                         "aud",
@@ -97,31 +100,23 @@ class JWTTokenService(TokenService):
                     ],
                 },
             )
-        except InvalidTokenError as exc:
-            raise AppError(
-                code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
-                message="Access token is invalid or expired",
-            )
+        except InvalidTokenError:
+            raise AccessTokenInvalidError() from None
 
         if payload.get("typ") != self.ACCESS_TOKEN_TYPE:
-            raise AppError(
-                code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
-                message="Access token is invalid or expired",
-            )
+            raise AccessTokenInvalidError()
 
         try:
             return AccessTokenPayload(
                 account_id=UserId(UUID(payload["sub"])),
+                session_id=SessionId(UUID(payload["sid"])),
                 expires_at=datetime.fromtimestamp(
                     payload["exp"],
                     tz=UTC,
                 ),
             )
-        except (KeyError, TypeError, ValueError) as exc:
-            raise AppError(
-                code=ErrorCode.AUTH_ACCESS_TOKEN_INVALID,
-                message="Access token is invalid or expired",
-            )
+        except (KeyError, TypeError, ValueError):
+            raise AccessTokenInvalidError() from None
 
     def hash_refresh_token(
             self,
@@ -135,11 +130,13 @@ class JWTTokenService(TokenService):
             self,
             *,
             account_id: UserId,
+            session_id: SessionId,
             issued_at: datetime,
             expires_at: datetime,
     ) -> str:
         payload: dict[str, Any] = {
             "sub": str(account_id.value),
+            "sid": str(session_id.value),
             "typ": self.ACCESS_TOKEN_TYPE,
             "iss": self._issuer,
             "aud": self._audience,

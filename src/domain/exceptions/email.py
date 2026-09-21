@@ -1,20 +1,22 @@
+from typing import Any
+
 from src.domain.exceptions.base import AppError
 from src.shared.errors.codes import ErrorCode
 
 
 class InvalidEmailError(AppError):
-    def __init__(self, reason: str | None = None) -> None:
+    def __init__(self, *, details: dict[str, Any] | None = None) -> None:
         super().__init__(
             code=ErrorCode.AUTH_INVALID_EMAIL,
             message="Invalid email",
-            details={"reason": reason} if reason else None,
+            details=details,
         )
 
 
 class EmailAlreadyRegisteredError(AppError):
-    def __init__(self, reason: str | None = None) -> None:
+    def __init__(self, *, details: dict[str, Any] | None = None) -> None:
         super().__init__(
             code=ErrorCode.AUTH_EMAIL_ALREADY_REGISTERED,
             message="Email already registered",
-            details={"reason": reason} if reason else None,
+            details=details,
         )
