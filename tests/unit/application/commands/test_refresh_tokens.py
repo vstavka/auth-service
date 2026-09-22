@@ -8,6 +8,7 @@ from src.application.dto import RefreshTokensRequest
 from src.domain.entities import Account, Session
 from src.domain.exceptions.auth import AccountDisabledError, RefreshTokenInvalidError
 from src.domain.value_objects import Email, PasswordHash, RefreshTokenHash, SessionId, UserId
+from src.infrastructure.cache import InMemoryCache
 from tests.fakes.security.fake_token_service import FakeTokenService
 from tests.fakes.system.fake_clock import FakeClock
 from tests.fakes.system.fake_unit_of_work import FakeUnitOfWork
@@ -42,6 +43,7 @@ class TestRefreshTokens:
             uow=fake_uow,
             token_service=fake_token_service,
             clock=fake_clock,
+            cache=InMemoryCache(),
         )
 
     async def _seed(

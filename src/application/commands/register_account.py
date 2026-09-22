@@ -1,6 +1,8 @@
 import logging
 
-from src.application.dto import TokenPair, RegisterRequest
+from src.application.cache_keys import sessions_key
+from src.application.dto import TokenPair, RegisterRequest, IntegrationEvent
+from src.application.ports.cache import Cache
 from src.application.ports.security import PasswordHasher, TokenService
 from src.application.ports.system import Clock, IdGenerator, UnitOfWork
 from src.application.services import issue_session
@@ -22,6 +24,7 @@ class RegisterAccountHandler:
             token_service: TokenService,
             id_generator: IdGenerator,
             clock: Clock,
+            cache: Cache,
     ) -> None:
         self._uow = uow
         self._password_policy = password_policy
@@ -29,6 +32,7 @@ class RegisterAccountHandler:
         self._token_service = token_service
         self._id_generator = id_generator
         self._clock = clock
+        self._cache = cache
 
     async def execute(
             self,
@@ -63,6 +67,20 @@ class RegisterAccountHandler:
             )
 
             await self._uow.accounts.add(account)
+
+            for domain_event in account.pull_events():
+                integration_event = IntegrationEvent(
+                    event_id=self._id_generator.new(),
+                    event_type="identity.account.registered",
+                    aggregate_id=str(account.public_id),
+                    occurred_at=domain_event.occurred_at,
+                    payload={
+                        "account_id": str(account.public_id),
+                        "email": str(account.email),
+                    },
+                )
+                await self._uow.outbox.add(integration_event)
+
             tokens = await issue_session(
                 uow=self._uow,
                 token_service=self._token_service,
@@ -74,6 +92,8 @@ class RegisterAccountHandler:
                 device_info=command.device_info,
             )
             await self._uow.commit()
+
+        await self._cache.delete(sessions_key(account.public_id))
 
         logger.info(
             "Account successfully registered",

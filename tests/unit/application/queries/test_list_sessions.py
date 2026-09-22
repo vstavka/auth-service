@@ -1,13 +1,16 @@
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
+import json
 
 import pytest
 
+from src.application.cache_keys import sessions_key
 from src.application.dto import ListSessionsQuery
 from src.application.queries import ListSessionsHandler
 from src.domain.entities import Account, Session
 from src.domain.exceptions.auth import UserNotFoundError
 from src.domain.value_objects import Email, PasswordHash, RefreshTokenHash, SessionId, UserId
+from src.infrastructure.cache import InMemoryCache
 from tests.fakes.system.fake_clock import FakeClock
 from tests.fakes.system.fake_unit_of_work import FakeUnitOfWork
 
@@ -25,12 +28,16 @@ class TestListSessions:
         return FakeUnitOfWork()
 
     @pytest.fixture
+    def cache(self) -> InMemoryCache:
+        return InMemoryCache()
+
+    @pytest.fixture
     def fake_clock(self) -> FakeClock:
         return FakeClock(datetime(2026, 9, 16, 20, 0, tzinfo=UTC))
 
     @pytest.fixture
-    def handler(self, fake_uow: FakeUnitOfWork) -> ListSessionsHandler:
-        return ListSessionsHandler(uow=fake_uow)
+    def handler(self, fake_uow: FakeUnitOfWork, cache: InMemoryCache) -> ListSessionsHandler:
+        return ListSessionsHandler(uow=fake_uow, cache=cache, ttl=timedelta(minutes=1))
 
     async def test_returns_own_sessions_including_revoked(
             self,
@@ -90,3 +97,51 @@ class TestListSessions:
     async def test_unknown_actor(self, handler: ListSessionsHandler) -> None:
         with pytest.raises(UserNotFoundError):
             await handler.execute(ListSessionsQuery(actor_id=ACTOR_ID))
+
+    async def test_cache_hit_returns_cached_sessions(
+            self,
+            handler: ListSessionsHandler,
+            cache: InMemoryCache,
+            fake_clock: FakeClock,
+    ) -> None:
+        payload = [
+            {
+                "id": str(SESSION_ID.value),
+                "ip": None,
+                "user_agent": None,
+                "device_info": None,
+                "created_at": fake_clock.now().isoformat(),
+                "expires_at": (fake_clock.now() + timedelta(days=1)).isoformat(),
+                "revoked_at": None,
+            }
+        ]
+        await cache.set(
+            sessions_key(ACTOR_ID),
+            json.dumps(payload).encode("utf-8"),
+        )
+
+        result = await handler.execute(ListSessionsQuery(actor_id=ACTOR_ID))
+
+        assert len(result) == 1
+        assert result[0].id == SESSION_ID.value
+
+    async def test_broken_cache_falls_back_to_db(
+            self,
+            handler: ListSessionsHandler,
+            fake_uow: FakeUnitOfWork,
+            cache: InMemoryCache,
+            fake_clock: FakeClock,
+    ) -> None:
+        now = fake_clock.now()
+        account = Account.create(
+            public_id=ACTOR_ID,
+            email=Email("user@example.com"),
+            password_hash=PasswordHash("hash"),
+            now=now,
+        )
+        await fake_uow.accounts.add(account)
+        await cache.set(sessions_key(ACTOR_ID), b"{bad")
+
+        result = await handler.execute(ListSessionsQuery(actor_id=ACTOR_ID))
+
+        assert result == []

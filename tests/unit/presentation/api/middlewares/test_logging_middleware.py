@@ -79,12 +79,12 @@ class TestLoggingMiddleware:
         client = TestClient(_build_app())
 
         with patch(
-            "src.presentation.api.middlewares.logging_middleware._SLOW_REQUEST_THRESHOLD_SECONDS",
-            -1.0,
+                "src.presentation.api.middlewares.logging_middleware._SLOW_REQUEST_THRESHOLD_SECONDS",
+                -1.0,
         ):
             with caplog.at_level(
-                "WARNING",
-                logger="src.presentation.api.middlewares.logging_middleware",
+                    "WARNING",
+                    logger="src.presentation.api.middlewares.logging_middleware",
             ):
                 response = client.get("/ok")
 
@@ -95,8 +95,8 @@ class TestLoggingMiddleware:
         client = TestClient(_build_app(), raise_server_exceptions=True)
 
         with caplog.at_level(
-            "ERROR",
-            logger="src.presentation.api.middlewares.logging_middleware",
+                "ERROR",
+                logger="src.presentation.api.middlewares.logging_middleware",
         ):
             with pytest.raises(RuntimeError, match="boom"):
                 client.get("/fail")

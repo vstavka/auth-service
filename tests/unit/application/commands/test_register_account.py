@@ -3,6 +3,7 @@ from uuid import UUID
 
 import pytest
 
+from src.application.cache_keys import sessions_key
 from src.application.commands import RegisterAccountHandler
 from src.application.dto import RegisterRequest, session_to_public
 from src.domain.entities import Account
@@ -11,6 +12,7 @@ from src.domain.exceptions.email import EmailAlreadyRegisteredError, InvalidEmai
 from src.domain.exceptions.password import InvalidPasswordError
 from src.domain.services.password_policy import PasswordPolicy
 from src.domain.value_objects import Email, RefreshTokenHash, SessionId, UserId
+from src.infrastructure.cache import InMemoryCache
 from tests.fakes.security.fake_password_hasher import FakePasswordHasher
 from tests.fakes.security.fake_token_service import FakeTokenService
 from tests.fakes.system.fake_clock import FakeClock
@@ -33,8 +35,16 @@ class TestRegisterAccount:
         return UUID("018f4e9e-4ca1-7ca3-9e8f-6ab7d7c6190e")
 
     @pytest.fixture
+    def event_id(self) -> UUID:
+        return UUID("018f4e9e-4ca1-7ca3-9e8f-6ab7d7c61910")
+
+    @pytest.fixture
     def fake_uow(self) -> FakeUnitOfWork:
         return FakeUnitOfWork()
+
+    @pytest.fixture
+    def cache(self) -> InMemoryCache:
+        return InMemoryCache()
 
     @pytest.fixture
     def fake_clock(self, fixed_now: datetime) -> FakeClock:
@@ -44,9 +54,10 @@ class TestRegisterAccount:
     def fake_id_generator(
             self,
             account_id: UUID,
+            event_id: UUID,
             session_id: UUID,
     ) -> FakeIdGenerator:
-        return FakeIdGenerator(ids=[account_id, session_id])
+        return FakeIdGenerator(ids=[account_id, event_id, session_id])
 
     @pytest.fixture
     def fake_password_hasher(self) -> FakePasswordHasher:
@@ -67,6 +78,7 @@ class TestRegisterAccount:
             fake_id_generator: FakeIdGenerator,
             fake_password_hasher: FakePasswordHasher,
             fake_token_service: FakeTokenService,
+            cache: InMemoryCache,
     ) -> RegisterAccountHandler:
         return RegisterAccountHandler(
             uow=fake_uow,
@@ -75,6 +87,7 @@ class TestRegisterAccount:
             token_service=fake_token_service,
             id_generator=fake_id_generator,
             clock=fake_clock,
+            cache=cache,
         )
 
     async def test_registers_new_account_and_returns_tokens(
@@ -138,6 +151,32 @@ class TestRegisterAccount:
         assert fake_uow.commit_called is True
         assert fake_uow.rollback_called is False
         assert fake_uow.closed is True
+
+        assert len(fake_uow.outbox.events) == 1
+        outbox_event = fake_uow.outbox.events[0]
+        assert outbox_event.event_type == "identity.account.registered"
+        assert outbox_event.aggregate_id == str(account_id)
+        assert outbox_event.payload == {
+            "account_id": str(account_id),
+            "email": "user@example.com",
+        }
+
+    async def test_invalidates_sessions_cache(
+            self,
+            use_case: RegisterAccountHandler,
+            cache: InMemoryCache,
+            account_id: UUID,
+    ) -> None:
+        await cache.set(sessions_key(UserId(account_id)), b"stale")
+
+        await use_case.execute(
+            RegisterRequest(
+                email="user@example.com",
+                password="StrongPassword123!",
+            )
+        )
+
+        assert await cache.get(sessions_key(UserId(account_id))) is None
 
     async def test_stores_client_context_on_session(
             self,

@@ -1,5 +1,6 @@
 import random
 from datetime import datetime, UTC
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
@@ -11,7 +12,9 @@ from src.domain.enums.account_status import AccountStatus
 from src.domain.value_objects.email import Email
 from src.domain.value_objects.password_hash import PasswordHash
 from src.domain.value_objects.user_id import UserId
+from src.application.dto import IntegrationEvent
 from src.infrastructure.persistence.sqlalchemy.models.account import Account as AccountORM
+from src.infrastructure.persistence.sqlalchemy.models.outbox_message import OutboxMessageModel
 from src.infrastructure.persistence.sqlalchemy.sql_unit_of_work import SQLUnitOfWork
 
 
@@ -164,6 +167,21 @@ class TestSessionLifecycle:
             assert result.scalar_one_or_none() is None
 
     @pytest.mark.asyncio
+    async def test_outbox_is_sql_outbox_repository_after_begin(self, uow_factory):
+        from src.infrastructure.persistence.sqlalchemy.repositories.sql_outbox_repository import (
+            SQLOutboxRepository,
+        )
+
+        uow = uow_factory()
+        await uow.begin()
+        try:
+            assert isinstance(uow.outbox, SQLOutboxRepository)
+        finally:
+            await uow.rollback()
+            await uow._session.close()
+            uow._session = None
+
+    @pytest.mark.asyncio
     async def test_accounts_is_sql_account_repository_after_begin(self, uow_factory):
         from src.infrastructure.persistence.sqlalchemy.repositories.sql_account_repository import (
             SQLAccountRepository,
@@ -177,3 +195,26 @@ class TestSessionLifecycle:
             await uow.rollback()
             await uow._session.close()
             uow._session = None
+
+
+class TestOutboxInUnitOfWork:
+    @pytest.mark.asyncio
+    async def test_outbox_event_is_persisted_after_successful_block(
+            self, uow_factory, async_engine
+    ):
+        event = IntegrationEvent(
+            event_id=uuid4(),
+            event_type="identity.account.registered",
+            aggregate_id="agg-1",
+            occurred_at=datetime.now(UTC),
+            payload={"account_id": "agg-1"},
+        )
+
+        async with uow_factory() as uow:
+            await uow.outbox.add(event)
+
+        async with AsyncSession(async_engine) as verify_session:
+            result = await verify_session.execute(
+                select(OutboxMessageModel).where(OutboxMessageModel.id == str(event.event_id))
+            )
+            assert result.scalar_one_or_none() is not None

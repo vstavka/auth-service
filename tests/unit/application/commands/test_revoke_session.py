@@ -3,11 +3,13 @@ from uuid import UUID
 
 import pytest
 
+from src.application.cache_keys import sessions_key
 from src.application.commands import RevokeAllSessionsHandler, RevokeSessionHandler
 from src.application.dto import RevokeAllSessionsRequest, RevokeSessionRequest
 from src.domain.entities import Account, Session
 from src.domain.exceptions.auth import SessionNotFoundError, UserNotFoundError
 from src.domain.value_objects import Email, PasswordHash, RefreshTokenHash, SessionId, UserId
+from src.infrastructure.cache import InMemoryCache
 from tests.fakes.system.fake_clock import FakeClock
 from tests.fakes.system.fake_unit_of_work import FakeUnitOfWork
 
@@ -48,7 +50,7 @@ class TestRevokeSession:
 
     @pytest.fixture
     def handler(self, fake_uow: FakeUnitOfWork, fake_clock: FakeClock) -> RevokeSessionHandler:
-        return RevokeSessionHandler(uow=fake_uow, clock=fake_clock)
+        return RevokeSessionHandler(uow=fake_uow, clock=fake_clock, cache=InMemoryCache())
 
     async def test_revokes_own_session(
             self,
@@ -72,6 +74,28 @@ class TestRevokeSession:
         assert stored is not None
         assert stored.revoked_at == fake_clock.now()
         assert fake_uow.commit_called is True
+
+    async def test_invalidates_sessions_cache(
+            self,
+            fake_uow: FakeUnitOfWork,
+            fake_clock: FakeClock,
+    ) -> None:
+        cache = InMemoryCache()
+        handler = RevokeSessionHandler(uow=fake_uow, clock=fake_clock, cache=cache)
+        account = _make_account(ACTOR_ID, "user@example.com", fake_clock.now())
+        await fake_uow.accounts.add(account)
+        session = _make_session(
+            public_id=SESSION_ID,
+            account_id=account.id,
+            token_hash="a" * 64,
+            now=fake_clock.now(),
+        )
+        await fake_uow.sessions.add(session)
+        await cache.set(sessions_key(ACTOR_ID), b"stale")
+
+        await handler.execute(RevokeSessionRequest(actor_id=ACTOR_ID, session_id=SESSION_ID))
+
+        assert await cache.get(sessions_key(ACTOR_ID)) is None
 
     async def test_revoking_twice_is_noop(
             self,
@@ -149,7 +173,7 @@ class TestRevokeAllSessions:
             fake_uow: FakeUnitOfWork,
             fake_clock: FakeClock,
     ) -> None:
-        handler = RevokeAllSessionsHandler(uow=fake_uow, clock=fake_clock)
+        handler = RevokeAllSessionsHandler(uow=fake_uow, clock=fake_clock, cache=InMemoryCache())
         account = _make_account(ACTOR_ID, "user@example.com", fake_clock.now())
         other = _make_account(OTHER_ID, "other@example.com", fake_clock.now())
         await fake_uow.accounts.add(account)

@@ -17,6 +17,7 @@ def _sanitize_request_id(value: str | None) -> str | None:
         return value
     return None
 
+
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Middleware for setting request_id in request context."""
 
@@ -32,4 +33,3 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             response.headers["X-Request-ID"] = request_id
             return response
-

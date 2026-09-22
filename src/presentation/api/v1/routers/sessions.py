@@ -1,7 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
 from dependency_injector.wiring import inject
+from fastapi import APIRouter, Depends, status
 
 from src.application.commands import RevokeAllSessionsHandler, RevokeSessionHandler
 from src.application.dto import (
@@ -19,7 +19,6 @@ from src.presentation.api.v1.dependencies import (
     get_revoke_session_handler,
 )
 from src.presentation.api.v1.schemas import SessionPublicSchema, session_public_to_schema
-
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 

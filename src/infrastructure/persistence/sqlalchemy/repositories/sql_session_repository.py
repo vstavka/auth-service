@@ -84,4 +84,3 @@ class SQLSessionRepository(SessionRepository):
         entity.expires_at = session.expires_at
         entity.revoked_at = session.revoked_at
         await self._session.flush()
-

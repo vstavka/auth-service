@@ -3,6 +3,7 @@ from src.application.dto.account_public import AccountPublic, account_to_public
 from src.application.dto.change_email_request import ChangeEmailRequest
 from src.application.dto.change_password_request import ChangePasswordRequest
 from src.application.dto.get_me_query import GetMeQuery
+from src.application.dto.integration_event import IntegrationEvent
 from src.application.dto.list_sessions_query import ListSessionsQuery
 from src.application.dto.login_request import LoginRequest
 from src.application.dto.refresh_tokens_request import RefreshTokensRequest
@@ -28,4 +29,5 @@ __all__ = [
     "GetMeQuery",
     "RevokeSessionRequest",
     "RevokeAllSessionsRequest",
+    "IntegrationEvent",
 ]

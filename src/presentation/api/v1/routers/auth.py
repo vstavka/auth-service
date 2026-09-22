@@ -1,6 +1,6 @@
 # src/presentation/api/v1/routers/auth.py
-from fastapi import APIRouter, Depends, Request, status
 from dependency_injector.wiring import inject
+from fastapi import APIRouter, Depends, Request, status
 
 from src.application.commands import (
     LoginAccountHandler,
@@ -27,7 +27,6 @@ from src.presentation.api.v1.schemas import (
     register_request_to_application,
     token_pair_to_schema,
 )
-
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

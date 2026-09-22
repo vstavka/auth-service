@@ -1,6 +1,8 @@
 import logging
 
+from src.application.cache_keys import sessions_key
 from src.application.dto import RevokeSessionRequest
+from src.application.ports.cache import Cache
 from src.application.ports.system import Clock, UnitOfWork
 from src.application.services import require_active_account
 from src.domain.exceptions.auth import SessionNotFoundError
@@ -9,9 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class RevokeSessionHandler:
-    def __init__(self, *, uow: UnitOfWork, clock: Clock) -> None:
+    def __init__(self, *, uow: UnitOfWork, clock: Clock, cache: Cache) -> None:
         self._uow = uow
         self._clock = clock
+        self._cache = cache
 
     async def execute(self, command: RevokeSessionRequest) -> None:
         async with self._uow:
@@ -23,6 +26,8 @@ class RevokeSessionHandler:
             session.revoke(self._clock.now())
             await self._uow.sessions.save(session)
             await self._uow.commit()
+
+        await self._cache.delete(sessions_key(account.public_id))
 
         logger.info(
             "Session revoked",

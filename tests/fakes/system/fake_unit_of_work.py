@@ -1,7 +1,11 @@
 from types import TracebackType
 
 from src.application.ports.system.unit_of_work import UnitOfWork
-from tests.fakes.repositories import FakeAccountRepository, FakeSessionRepository
+from tests.fakes.repositories import (
+    FakeAccountRepository,
+    FakeOutboxRepository,
+    FakeSessionRepository,
+)
 
 
 class FakeUnitOfWork(UnitOfWork):
@@ -11,6 +15,7 @@ class FakeUnitOfWork(UnitOfWork):
         self.closed = False
         self.accounts = FakeAccountRepository()
         self.sessions = FakeSessionRepository()
+        self.outbox = FakeOutboxRepository()
 
     async def __aenter__(self) -> "FakeUnitOfWork":
         return self
