@@ -23,7 +23,6 @@ class DatabaseSettings(BaseSettings):
     username: str = "postgres"
     password: SecretStr = SecretStr("postgres")
 
-
     @computed_field
     @property
     def url(self) -> str:
@@ -52,6 +51,40 @@ class LoggingSettings(BaseSettings):
     slow_request_threshold_seconds: float = 3.0
 
 
+class CacheSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="CACHE_", env_file=".env", extra="ignore")
+
+    backend: Literal["memory", "redis"] = "memory"
+    account_ttl_seconds: int = 60
+    sessions_ttl_seconds: int = 60
+
+
+class RedisSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="REDIS_", env_file=".env", extra="ignore")
+
+    host: str = "localhost"
+    port: int = 6379
+    db: int = 0
+    password: SecretStr | None = None
+
+    @computed_field
+    @property
+    def url(self) -> str:
+        password = self.password.get_secret_value() if self.password is not None else ""
+        if password:
+            return f"redis://:{password}@{self.host}:{self.port}/{self.db}"
+        return f"redis://{self.host}:{self.port}/{self.db}"
+
+
+class EventsSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="EVENTS_", env_file=".env", extra="ignore")
+
+    publisher: Literal["memory", "file"] = "memory"
+    file_path: str = "events.jsonl"
+    relay_poll_interval_seconds: float = 1.0
+    relay_batch_size: int = 50
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__", extra="ignore")
 
@@ -59,3 +92,6 @@ class Settings(BaseSettings):
     db: DatabaseSettings = Field(default_factory=DatabaseSettings)
     jwt: JWTSettings = Field(default_factory=JWTSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
+    cache: CacheSettings = Field(default_factory=CacheSettings)
+    redis: RedisSettings = Field(default_factory=RedisSettings)
+    events: EventsSettings = Field(default_factory=EventsSettings)

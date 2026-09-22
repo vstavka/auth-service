@@ -1,6 +1,8 @@
 import logging
 
+from src.application.cache_keys import account_key, sessions_key
 from src.application.dto import ChangePasswordRequest
+from src.application.ports.cache import Cache
 from src.application.ports.security import PasswordHasher
 from src.application.ports.system import Clock, UnitOfWork
 from src.application.services import require_active_account
@@ -18,11 +20,13 @@ class ChangePasswordHandler:
             password_policy: PasswordPolicy,
             password_hasher: PasswordHasher,
             clock: Clock,
+            cache: Cache,
     ) -> None:
         self._uow = uow
         self._password_policy = password_policy
         self._password_hasher = password_hasher
         self._clock = clock
+        self._cache = cache
 
     async def execute(self, command: ChangePasswordRequest) -> None:
         self._password_policy.validate(command.new_password)
@@ -55,6 +59,13 @@ class ChangePasswordHandler:
                 await self._uow.sessions.save(session)
 
             await self._uow.commit()
+
+        await self._cache.delete_many(
+            [
+                account_key(account.public_id),
+                sessions_key(account.public_id),
+            ],
+        )
 
         logger.info(
             "Account password changed",

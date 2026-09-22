@@ -12,7 +12,10 @@ from src.application.commands import (
     RevokeSessionHandler,
 )
 from src.application.queries import GetMeHandler, ListSessionsHandler
+from src.application.services import OutboxRelay
 from src.domain.services.password_policy import PasswordPolicy
+from src.infrastructure.cache.factory import create_cache
+from src.infrastructure.messaging.factory import create_event_publisher
 from src.infrastructure.persistence.sqlalchemy.database import create_engine, create_session_maker
 from src.infrastructure.persistence.sqlalchemy.sql_unit_of_work import SQLUnitOfWork
 from src.infrastructure.security import Argon2PasswordHasher, JWTTokenService
@@ -28,6 +31,16 @@ class Container(containers.DeclarativeContainer):
     refresh_token_ttl = providers.Callable(
         timedelta, days=config.jwt.refresh_token_expire_days
     )
+    account_cache_ttl = providers.Callable(
+        timedelta, seconds=config.cache.account_ttl_seconds
+    )
+    sessions_cache_ttl = providers.Callable(
+        timedelta, seconds=config.cache.sessions_ttl_seconds
+    )
+    relay_poll_interval = providers.Callable(
+        timedelta, seconds=config.events.relay_poll_interval_seconds
+    )
+
     clock = providers.Singleton(SystemClock)
     id_generator = providers.Singleton(UUID7IdGenerator)
     password_hasher = providers.Singleton(Argon2PasswordHasher)
@@ -39,6 +52,25 @@ class Container(containers.DeclarativeContainer):
     )
     session_factory = providers.Singleton(create_session_maker, engine=engine)
     unit_of_work = providers.Factory(SQLUnitOfWork, session_factory=session_factory)
+
+    cache = providers.Singleton(
+        create_cache,
+        backend=config.cache.backend,
+        redis_url=config.redis.url,
+    )
+    event_publisher = providers.Singleton(
+        create_event_publisher,
+        kind=config.events.publisher,
+        file_path=config.events.file_path,
+    )
+    outbox_relay = providers.Factory(
+        OutboxRelay,
+        uow=unit_of_work,
+        publisher=event_publisher,
+        clock=clock,
+        batch_size=config.events.relay_batch_size,
+        poll_interval=relay_poll_interval,
+    )
 
     token_service = providers.Singleton(
         JWTTokenService,
@@ -59,6 +91,7 @@ class Container(containers.DeclarativeContainer):
         password_hasher=password_hasher,
         token_service=token_service,
         password_policy=password_policy,
+        cache=cache,
     )
     login_account_handler = providers.Factory(
         LoginAccountHandler,
@@ -67,17 +100,20 @@ class Container(containers.DeclarativeContainer):
         token_service=token_service,
         id_generator=id_generator,
         clock=clock,
+        cache=cache,
     )
     refresh_tokens_handler = providers.Factory(
         RefreshTokensHandler,
         uow=unit_of_work,
         token_service=token_service,
         clock=clock,
+        cache=cache,
     )
     change_email_handler = providers.Factory(
         ChangeEmailHandler,
         uow=unit_of_work,
         clock=clock,
+        cache=cache,
     )
     change_password_handler = providers.Factory(
         ChangePasswordHandler,
@@ -85,22 +121,29 @@ class Container(containers.DeclarativeContainer):
         password_policy=password_policy,
         password_hasher=password_hasher,
         clock=clock,
+        cache=cache,
     )
     revoke_session_handler = providers.Factory(
         RevokeSessionHandler,
         uow=unit_of_work,
         clock=clock,
+        cache=cache,
     )
     revoke_all_sessions_handler = providers.Factory(
         RevokeAllSessionsHandler,
         uow=unit_of_work,
         clock=clock,
+        cache=cache,
     )
     get_me_handler = providers.Factory(
         GetMeHandler,
         uow=unit_of_work,
+        cache=cache,
+        ttl=account_cache_ttl,
     )
     list_sessions_handler = providers.Factory(
         ListSessionsHandler,
         uow=unit_of_work,
+        cache=cache,
+        ttl=sessions_cache_ttl,
     )

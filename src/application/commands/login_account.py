@@ -1,6 +1,8 @@
 import logging
 
+from src.application.cache_keys import sessions_key
 from src.application.dto import LoginRequest, TokenPair
+from src.application.ports.cache import Cache
 from src.application.ports.security import PasswordHasher, TokenService
 from src.application.ports.system import Clock, IdGenerator, UnitOfWork
 from src.application.services import issue_session
@@ -19,12 +21,14 @@ class LoginAccountHandler:
             token_service: TokenService,
             id_generator: IdGenerator,
             clock: Clock,
+            cache: Cache,
     ) -> None:
         self._uow = uow
         self._password_hasher = password_hasher
         self._token_service = token_service
         self._id_generator = id_generator
         self._clock = clock
+        self._cache = cache
 
     async def execute(self, command: LoginRequest) -> TokenPair:
         email = Email(command.email)
@@ -56,6 +60,8 @@ class LoginAccountHandler:
                 device_info=command.device_info,
             )
             await self._uow.commit()
+
+        await self._cache.delete(sessions_key(account.public_id))
 
         logger.info(
             "Account logged in",

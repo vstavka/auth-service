@@ -48,7 +48,7 @@ class TestAdd:
 
     @pytest.mark.asyncio
     async def test_add_duplicate_email_raises_domain_error(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         first = make_account(email="duplicate@example.com")
         second = make_account(email="duplicate@example.com")
@@ -60,7 +60,7 @@ class TestAdd:
 
     @pytest.mark.asyncio
     async def test_add_generates_public_id_when_missing(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         """
         Если у сущности public_id не задан заранее на уровне domain-фабрики,
@@ -74,7 +74,7 @@ class TestAdd:
 
     @pytest.mark.asyncio
     async def test_add_duplicate_public_id_raises_email_already_registered(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         public_id = uuid7()
         first = make_account(email="first@example.com", public_id=public_id)
@@ -89,7 +89,7 @@ class TestAdd:
 class TestGetById:
     @pytest.mark.asyncio
     async def test_returns_none_for_missing_account(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         result = await repository.get_by_id(UserId(uuid4()))
         assert result is None
@@ -106,7 +106,7 @@ class TestGetById:
 
     @pytest.mark.asyncio
     async def test_get_by_id_returns_all_persisted_fields(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         account = make_account(email="fields-id@example.com")
         await repository.add(account)
@@ -127,7 +127,7 @@ class TestGetById:
 class TestGetByEmail:
     @pytest.mark.asyncio
     async def test_returns_none_for_missing_email(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         result = await repository.get_by_email(Email("missing@example.com"))
         assert result is None
@@ -144,7 +144,7 @@ class TestGetByEmail:
 
     @pytest.mark.asyncio
     async def test_get_by_email_returns_all_persisted_fields(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         account = make_account(email="fields-email@example.com")
         await repository.add(account)
@@ -166,7 +166,7 @@ class TestGetByEmail:
 class TestGetByInternalId:
     @pytest.mark.asyncio
     async def test_returns_account_by_internal_id(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         account = make_account(email="internal-id@example.com")
         await repository.add(account)
@@ -178,7 +178,7 @@ class TestGetByInternalId:
 
     @pytest.mark.asyncio
     async def test_returns_none_for_missing_internal_id(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         result = await repository.get_by_internal_id(999_999)
         assert result is None
@@ -187,7 +187,7 @@ class TestGetByInternalId:
 class TestSave:
     @pytest.mark.asyncio
     async def test_save_persists_email_and_password_changes(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         account = make_account(email="before@example.com")
         await repository.add(account)
@@ -207,7 +207,7 @@ class TestSave:
 
     @pytest.mark.asyncio
     async def test_save_duplicate_email_raises_domain_error(
-        self, repository: SQLAccountRepository
+            self, repository: SQLAccountRepository
     ):
         first = make_account(email="taken@example.com")
         second = make_account(email="free@example.com")

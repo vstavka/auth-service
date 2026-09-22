@@ -1,19 +1,39 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from src.domain.enums import AccountStatus
+from src.domain.events import DomainEvent, AccountCreated
 from src.domain.value_objects import UserId, Email, PasswordHash
 
 
 @dataclass(slots=True)
 class Account:
-    id: int|None
+    id: int | None
     public_id: UserId
     email: Email
     status: AccountStatus
     password_hash: PasswordHash
     created_at: datetime
     updated_at: datetime
+
+    _events: list[DomainEvent] = field(
+        default_factory=list,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+
+    @property
+    def events(self) -> tuple[DomainEvent, ...]:
+        return tuple(self._events)
+
+    def _record_event(self, event: DomainEvent) -> None:
+        self._events.append(event)
+
+    def pull_events(self) -> list[DomainEvent]:
+        events = self._events.copy()
+        self._events.clear()
+        return events
 
     @classmethod
     def create(
@@ -23,9 +43,9 @@ class Account:
             email: Email,
             password_hash: PasswordHash,
             now: datetime,
-            id:int = None
+            id: int = None
     ) -> "Account":
-        return cls(
+        account = cls(
             id=id,
             public_id=public_id,
             email=email,
@@ -34,6 +54,16 @@ class Account:
             created_at=now,
             updated_at=now,
         )
+
+        account._record_event(
+            AccountCreated(
+                account_id=public_id,
+                email=email,
+                occurred_at=now,
+            )
+        )
+
+        return account
 
     def change_password(
             self,

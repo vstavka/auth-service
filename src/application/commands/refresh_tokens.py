@@ -1,6 +1,8 @@
 import logging
 
+from src.application.cache_keys import sessions_key
 from src.application.dto import RefreshTokensRequest, TokenPair
+from src.application.ports.cache import Cache
 from src.application.ports.security import TokenService
 from src.application.ports.system import Clock, UnitOfWork
 from src.domain.exceptions.auth import AccountDisabledError, RefreshTokenInvalidError
@@ -16,10 +18,12 @@ class RefreshTokensHandler:
             uow: UnitOfWork,
             token_service: TokenService,
             clock: Clock,
+            cache: Cache,
     ) -> None:
         self._uow = uow
         self._token_service = token_service
         self._clock = clock
+        self._cache = cache
 
     async def execute(self, command: RefreshTokensRequest) -> TokenPair:
         token_hash = RefreshTokenHash(
@@ -51,6 +55,8 @@ class RefreshTokensHandler:
             )
             await self._uow.sessions.save(session)
             await self._uow.commit()
+
+        await self._cache.delete(sessions_key(account.public_id))
 
         logger.info(
             "Tokens refreshed",

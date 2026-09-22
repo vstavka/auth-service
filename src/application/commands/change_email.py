@@ -1,6 +1,8 @@
 import logging
 
+from src.application.cache_keys import account_key
 from src.application.dto import ChangeEmailRequest, AccountPublic, account_to_public
+from src.application.ports.cache import Cache
 from src.application.ports.system import Clock, UnitOfWork
 from src.application.services import require_active_account
 from src.domain.exceptions.email import EmailAlreadyRegisteredError
@@ -10,9 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 class ChangeEmailHandler:
-    def __init__(self, *, uow: UnitOfWork, clock: Clock) -> None:
+    def __init__(self, *, uow: UnitOfWork, clock: Clock, cache: Cache) -> None:
         self._uow = uow
         self._clock = clock
+        self._cache = cache
 
     async def execute(self, command: ChangeEmailRequest) -> AccountPublic:
         email = Email(command.email)
@@ -26,6 +29,8 @@ class ChangeEmailHandler:
             account.change_email(email=email, now=self._clock.now())
             await self._uow.accounts.save(account)
             await self._uow.commit()
+
+        await self._cache.delete(account_key(account.public_id))
 
         logger.info(
             "Account email changed",

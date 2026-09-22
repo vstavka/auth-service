@@ -38,7 +38,7 @@ class FakeSessionRepository(SessionRepository):
             token_hash
             for token_hash, stored in self._by_refresh_token_hash.items()
             if stored.public_id == session.public_id
-            and token_hash != session.refresh_token_hash.value
+               and token_hash != session.refresh_token_hash.value
         ]
         for token_hash in stale_hashes:
             del self._by_refresh_token_hash[token_hash]

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, status
 from dependency_injector.wiring import inject
+from fastapi import APIRouter, Depends, status
 
 from src.application.commands import ChangeEmailHandler, ChangePasswordHandler
 from src.application.dto import (
@@ -21,7 +21,6 @@ from src.presentation.api.v1.schemas import (
     ChangePasswordBody,
     account_public_to_schema,
 )
-
 
 router = APIRouter(tags=["me"])
 

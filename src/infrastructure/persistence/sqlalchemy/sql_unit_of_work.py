@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from src.application.ports.system import UnitOfWork
 from src.infrastructure.persistence.sqlalchemy.repositories import (
     SQLAccountRepository,
+    SQLOutboxRepository,
     SQLSessionRepository,
 )
 
@@ -16,6 +17,7 @@ class SQLUnitOfWork(UnitOfWork):
 
     accounts: SQLAccountRepository
     sessions: SQLSessionRepository
+    outbox: SQLOutboxRepository
     _session: AsyncSession | None = None
 
     def __init__(self, session_factory: async_sessionmaker):
@@ -28,6 +30,7 @@ class SQLUnitOfWork(UnitOfWork):
         self._session = self._session_factory()
         self.accounts = SQLAccountRepository(self._session)
         self.sessions = SQLSessionRepository(self._session)
+        self.outbox = SQLOutboxRepository(self._session)
         logger.debug("UnitOfWork started, session=%s", id(self._session))
 
     async def commit(self) -> None:

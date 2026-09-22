@@ -1,6 +1,7 @@
 from typing import Protocol
 
 from src.application.ports.repositories.account_repository import AccountRepository
+from src.application.ports.events.outbox_repository import OutboxRepository
 from src.application.ports.repositories.session_repository import SessionRepository
 
 
@@ -8,6 +9,7 @@ class UnitOfWork(Protocol):
     """Transaction context with access to repositories."""
     accounts: AccountRepository
     sessions: SessionRepository
+    outbox: OutboxRepository
 
     async def commit(self) -> None:
         pass

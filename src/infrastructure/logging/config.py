@@ -124,11 +124,11 @@ def get_request_id() -> str | None:
 
 
 def setup_logging(
-    *,
-    level: str,
-    service_name: str,
-    service_version: str,
-    log_path: str | None = None,
+        *,
+        level: str,
+        service_name: str,
+        service_version: str,
+        log_path: str | None = None,
 ) -> None:
     """
     Configure logging:

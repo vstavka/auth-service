@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from src.infrastructure.cache.redis_cache import RedisCache
 from src.infrastructure.config.settings import Settings
 from src.infrastructure.di.containers import Container
 from src.infrastructure.logging.config import setup_logging
@@ -9,8 +10,8 @@ from src.infrastructure.persistence.sqlalchemy.database import init_sqlite_schem
 from src.presentation.api.exception_handlers import register_exception_handlers
 from src.presentation.api.middlewares.logging_middleware import LoggingMiddleware
 from src.presentation.api.middlewares.request_id_middleware import RequestIDMiddleware
-from src.presentation.api.v1.router import router as v1_router
 from src.presentation.api.v1 import dependencies as v1_dependencies
+from src.presentation.api.v1.router import router as v1_router
 from src.presentation.api.v1.routers import auth, me, sessions
 
 
@@ -34,6 +35,10 @@ async def lifespan(app: FastAPI):
         await init_sqlite_schema(engine)
 
     yield
+
+    cache = container.cache()
+    if isinstance(cache, RedisCache):
+        await cache.aclose()
 
 
 app = FastAPI(lifespan=lifespan)

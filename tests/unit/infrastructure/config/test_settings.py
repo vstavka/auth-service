@@ -3,9 +3,12 @@ from pydantic import SecretStr, ValidationError
 
 from src.infrastructure.config.settings import (
     AppSettings,
+    CacheSettings,
     DatabaseSettings,
+    EventsSettings,
     JWTSettings,
     LoggingSettings,
+    RedisSettings,
     Settings,
 )
 
@@ -83,3 +86,38 @@ class TestSettings:
         assert settings.db.type == "postgres"
         assert settings.logging.level == "INFO"
         assert settings.jwt.secret_key.get_secret_value() == "required-secret"
+        assert settings.cache.backend == "memory"
+        assert settings.events.publisher == "memory"
+
+
+@pytest.mark.unit
+class TestCacheAndEventsSettings:
+    def test_cache_and_events_load_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CACHE_BACKEND", "redis")
+        monkeypatch.setenv("CACHE_ACCOUNT_TTL_SECONDS", "30")
+        monkeypatch.setenv("CACHE_SESSIONS_TTL_SECONDS", "45")
+        monkeypatch.setenv("REDIS_HOST", "redis.internal")
+        monkeypatch.setenv("REDIS_PORT", "6380")
+        monkeypatch.setenv("REDIS_DB", "2")
+        monkeypatch.setenv("REDIS_PASSWORD", "secret")
+        monkeypatch.setenv("EVENTS_PUBLISHER", "file")
+        monkeypatch.setenv("EVENTS_FILE_PATH", "/tmp/events.jsonl")
+        monkeypatch.setenv("EVENTS_RELAY_POLL_INTERVAL_SECONDS", "3.5")
+        monkeypatch.setenv("EVENTS_RELAY_BATCH_SIZE", "10")
+
+        cache = CacheSettings(_env_file=None)
+        redis = RedisSettings(_env_file=None)
+        events = EventsSettings(_env_file=None)
+
+        assert cache.backend == "redis"
+        assert cache.account_ttl_seconds == 30
+        assert cache.sessions_ttl_seconds == 45
+        assert redis.url == "redis://:secret@redis.internal:6380/2"
+        assert events.publisher == "file"
+        assert events.file_path == "/tmp/events.jsonl"
+        assert events.relay_poll_interval_seconds == 3.5
+        assert events.relay_batch_size == 10
+
+    def test_redis_url_without_password(self) -> None:
+        redis = RedisSettings(_env_file=None)
+        assert redis.url == "redis://localhost:6379/0"

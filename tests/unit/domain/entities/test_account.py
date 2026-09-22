@@ -21,7 +21,7 @@ CREATED_AT = datetime(2026, 9, 15, 18, 0, tzinfo=timezone.utc)
 @pytest.fixture
 def account() -> Account:
     return Account.create(
-        id = ACCOUNT_ID,
+        id=ACCOUNT_ID,
         public_id=ACCOUNT_PUBLIC_ID,
         email=EMAIL,
         password_hash=INITIAL_PASSWORD_HASH,
@@ -40,6 +40,17 @@ class TestAccount:
         assert account.created_at == CREATED_AT
         assert account.updated_at == CREATED_AT
         assert account.is_active is True
+        events = account.events
+        assert len(events) == 1
+        event = events[0]
+        assert event.account_id == ACCOUNT_PUBLIC_ID
+        assert event.email == EMAIL
+        assert event.occurred_at == CREATED_AT
+
+        pulled = account.pull_events()
+        assert pulled == list(events)
+        assert account.events == ()
+        assert account.pull_events() == []
 
     def test_change_password(self, account: Account):
         changed_at = datetime(

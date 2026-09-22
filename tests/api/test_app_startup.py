@@ -65,3 +65,4 @@ class TestAppStartup:
                 )
 
             assert "account" in table_names
+            assert "outbox_messages" in table_names

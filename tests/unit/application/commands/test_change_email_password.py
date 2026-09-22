@@ -3,6 +3,7 @@ from uuid import UUID
 
 import pytest
 
+from src.application.cache_keys import account_key, sessions_key
 from src.application.commands import ChangeEmailHandler, ChangePasswordHandler
 from src.application.dto import ChangeEmailRequest, ChangePasswordRequest
 from src.domain.entities import Account, Session
@@ -11,6 +12,7 @@ from src.domain.exceptions.email import EmailAlreadyRegisteredError
 from src.domain.exceptions.password import InvalidPasswordError
 from src.domain.services.password_policy import PasswordPolicy
 from src.domain.value_objects import Email, RefreshTokenHash, SessionId, UserId
+from src.infrastructure.cache import InMemoryCache
 from tests.fakes.security.fake_password_hasher import FakePasswordHasher
 from tests.fakes.system.fake_clock import FakeClock
 from tests.fakes.system.fake_unit_of_work import FakeUnitOfWork
@@ -63,8 +65,17 @@ class TestChangeEmail:
         return FakePasswordHasher()
 
     @pytest.fixture
-    def handler(self, fake_uow: FakeUnitOfWork, fake_clock: FakeClock) -> ChangeEmailHandler:
-        return ChangeEmailHandler(uow=fake_uow, clock=fake_clock)
+    def cache(self) -> InMemoryCache:
+        return InMemoryCache()
+
+    @pytest.fixture
+    def handler(
+            self,
+            fake_uow: FakeUnitOfWork,
+            fake_clock: FakeClock,
+            cache: InMemoryCache,
+    ) -> ChangeEmailHandler:
+        return ChangeEmailHandler(uow=fake_uow, clock=fake_clock, cache=cache)
 
     async def test_changes_email(
             self,
@@ -91,6 +102,29 @@ class TestChangeEmail:
         assert result.id == ACTOR_ID.value
         assert result.email == "new@example.com"
         assert fake_uow.commit_called is True
+
+    async def test_invalidates_account_cache(
+            self,
+            handler: ChangeEmailHandler,
+            fake_uow: FakeUnitOfWork,
+            fake_clock: FakeClock,
+            hasher: FakePasswordHasher,
+            cache: InMemoryCache,
+    ) -> None:
+        account = _make_account(
+            public_id=ACTOR_ID,
+            email="old@example.com",
+            hasher=hasher,
+            now=fake_clock.now(),
+        )
+        await fake_uow.accounts.add(account)
+        await cache.set(account_key(ACTOR_ID), b"stale")
+
+        await handler.execute(
+            ChangeEmailRequest(actor_id=ACTOR_ID, email="new@example.com")
+        )
+
+        assert await cache.get(account_key(ACTOR_ID)) is None
 
     async def test_rejects_taken_email(
             self,
@@ -152,6 +186,7 @@ class TestChangePassword:
             password_policy=PasswordPolicy(),
             password_hasher=hasher,
             clock=fake_clock,
+            cache=InMemoryCache(),
         )
 
     async def test_changes_password_and_revokes_other_sessions(
@@ -286,3 +321,46 @@ class TestChangePassword:
                     current_session_id=CURRENT_SESSION_ID,
                 )
             )
+
+    async def test_invalidates_account_and_sessions_cache(
+            self,
+            fake_uow: FakeUnitOfWork,
+            fake_clock: FakeClock,
+            hasher: FakePasswordHasher,
+    ) -> None:
+        cache = InMemoryCache()
+        handler = ChangePasswordHandler(
+            uow=fake_uow,
+            password_policy=PasswordPolicy(),
+            password_hasher=hasher,
+            clock=fake_clock,
+            cache=cache,
+        )
+        account = _make_account(
+            public_id=ACTOR_ID,
+            email="user@example.com",
+            hasher=hasher,
+            now=fake_clock.now(),
+        )
+        await fake_uow.accounts.add(account)
+        session = _make_session(
+            public_id=CURRENT_SESSION_ID,
+            account_id=account.id,
+            token_hash="a" * 64,
+            now=fake_clock.now(),
+        )
+        await fake_uow.sessions.add(session)
+        await cache.set(account_key(ACTOR_ID), b"stale-account")
+        await cache.set(sessions_key(ACTOR_ID), b"stale-sessions")
+
+        await handler.execute(
+            ChangePasswordRequest(
+                actor_id=ACTOR_ID,
+                current_password=PASSWORD,
+                new_password=NEW_PASSWORD,
+                current_session_id=CURRENT_SESSION_ID,
+            )
+        )
+
+        assert await cache.get(account_key(ACTOR_ID)) is None
+        assert await cache.get(sessions_key(ACTOR_ID)) is None

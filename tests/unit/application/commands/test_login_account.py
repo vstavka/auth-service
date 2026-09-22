@@ -3,12 +3,14 @@ from uuid import UUID
 
 import pytest
 
+from src.application.cache_keys import sessions_key
 from src.application.commands import LoginAccountHandler
 from src.application.dto import LoginRequest
 from src.domain.entities import Account
 from src.domain.exceptions.auth import AccountDisabledError, InvalidCredentialsError
 from src.domain.exceptions.email import InvalidEmailError
 from src.domain.value_objects import Email, UserId
+from src.infrastructure.cache import InMemoryCache
 from tests.fakes.security.fake_password_hasher import FakePasswordHasher
 from tests.fakes.security.fake_token_service import FakeTokenService
 from tests.fakes.system.fake_clock import FakeClock
@@ -61,6 +63,7 @@ class TestLoginAccount:
             token_service=fake_token_service,
             id_generator=fake_id_generator,
             clock=fake_clock,
+            cache=InMemoryCache(),
         )
 
     async def _seed_account(
@@ -153,3 +156,27 @@ class TestLoginAccount:
             await handler.execute(
                 LoginRequest(email="not-an-email", password=PASSWORD)
             )
+
+    async def test_invalidates_sessions_cache(
+            self,
+            fake_uow: FakeUnitOfWork,
+            fake_clock: FakeClock,
+            fake_id_generator: FakeIdGenerator,
+            fake_password_hasher: FakePasswordHasher,
+            fake_token_service: FakeTokenService,
+    ) -> None:
+        cache = InMemoryCache()
+        await self._seed_account(fake_uow, fake_password_hasher, fake_clock)
+        await cache.set(sessions_key(UserId(ACCOUNT_PUBLIC_ID)), b"stale")
+        handler = LoginAccountHandler(
+            uow=fake_uow,
+            password_hasher=fake_password_hasher,
+            token_service=fake_token_service,
+            id_generator=fake_id_generator,
+            clock=fake_clock,
+            cache=cache,
+        )
+
+        await handler.execute(LoginRequest(email="user@example.com", password=PASSWORD))
+
+        assert await cache.get(sessions_key(UserId(ACCOUNT_PUBLIC_ID))) is None

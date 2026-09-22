@@ -35,6 +35,7 @@ def session_factory(async_engine: AsyncEngine):
     Фабрика сессий — нужна для SQLUnitOfWork, который сам создаёт
     и закрывает сессии внутри begin()/__aexit__().
     """
+
     def factory() -> AsyncSession:
         return AsyncSession(async_engine, expire_on_commit=False)
 
