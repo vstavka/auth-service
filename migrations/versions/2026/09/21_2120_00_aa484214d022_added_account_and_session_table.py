@@ -1,7 +1,7 @@
 """Added account and session table
 
 Revision ID: aa484214d022
-Revises: 
+Revises:
 Create Date: 2026-09-21 21:20:00.747110
 
 """
@@ -27,8 +27,8 @@ def upgrade() -> None:
                     sa.Column('status', sa.Enum('ACTIVE', 'DISABLED', 'DELETED', name='account_status'),
                               nullable=False),
                     sa.Column('password_hash', sa.String(length=255), nullable=False),
-                    sa.Column('created_at', sa.DateTime(), nullable=False),
-                    sa.Column('updated_at', sa.DateTime(), nullable=False),
+                    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+                    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
                     sa.PrimaryKeyConstraint('id')
                     )
     op.create_index(op.f('ix_account_email'), 'account', ['email'], unique=True)
@@ -41,9 +41,9 @@ def upgrade() -> None:
                     sa.Column('ip', sa.String(length=45), nullable=True),
                     sa.Column('user_agent', sa.String(length=512), nullable=True),
                     sa.Column('device_info', sa.String(length=255), nullable=True),
-                    sa.Column('created_at', sa.DateTime(), nullable=False),
-                    sa.Column('expires_at', sa.DateTime(), nullable=False),
-                    sa.Column('revoked_at', sa.DateTime(), nullable=True),
+                    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+                    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+                    sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
                     sa.ForeignKeyConstraint(['account_id'], ['account.id'], ),
                     sa.PrimaryKeyConstraint('id')
                     )
