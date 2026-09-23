@@ -41,7 +41,7 @@ async def run_outbox_relay() -> None:
         await start()
 
     relay: OutboxRelay = container.outbox_relay()
-    logger.info("Outbox relay worker started")
+    logger.info("Outbox relay worker started - event publisher: %s", settings.events.publisher)
     try:
         await relay.run_forever(stop_event=stop)
     finally:
