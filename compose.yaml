@@ -7,7 +7,8 @@ x-app: &app
     DB_HOST: ${DB_HOST:-host.docker.internal}
     CACHE_BACKEND: redis
     REDIS_HOST: redis
-
+  networks:
+      - infra
 
 
 services:
@@ -56,3 +57,7 @@ services:
           path: pyproject.toml
         - action: rebuild
           path: poetry.lock
+networks:
+  infra:
+    name: infra
+    driver: bridge
