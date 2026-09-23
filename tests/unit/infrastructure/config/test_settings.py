@@ -78,6 +78,8 @@ class TestSettings:
             db=DatabaseSettings(_env_file=None),
             jwt=JWTSettings(secret_key="required-secret", _env_file=None),
             logging=LoggingSettings(_env_file=None),
+            cache=CacheSettings(_env_file=None),
+            events=EventsSettings(_env_file=None),
             _env_file=None,
         )
 
@@ -100,8 +102,10 @@ class TestCacheAndEventsSettings:
         monkeypatch.setenv("REDIS_PORT", "6380")
         monkeypatch.setenv("REDIS_DB", "2")
         monkeypatch.setenv("REDIS_PASSWORD", "secret")
-        monkeypatch.setenv("EVENTS_PUBLISHER", "file")
+        monkeypatch.setenv("EVENTS_PUBLISHER", "kafka")
         monkeypatch.setenv("EVENTS_FILE_PATH", "/tmp/events.jsonl")
+        monkeypatch.setenv("EVENTS_KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+        monkeypatch.setenv("EVENTS_KAFKA_CLIENT_ID", "auth-outbox")
         monkeypatch.setenv("EVENTS_RELAY_POLL_INTERVAL_SECONDS", "3.5")
         monkeypatch.setenv("EVENTS_RELAY_BATCH_SIZE", "10")
 
@@ -113,8 +117,10 @@ class TestCacheAndEventsSettings:
         assert cache.account_ttl_seconds == 30
         assert cache.sessions_ttl_seconds == 45
         assert redis.url == "redis://:secret@redis.internal:6380/2"
-        assert events.publisher == "file"
+        assert events.publisher == "kafka"
         assert events.file_path == "/tmp/events.jsonl"
+        assert events.kafka_bootstrap_servers == "kafka:9092"
+        assert events.kafka_client_id == "auth-outbox"
         assert events.relay_poll_interval_seconds == 3.5
         assert events.relay_batch_size == 10
 

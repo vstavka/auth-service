@@ -15,7 +15,7 @@ from src.application.queries import GetMeHandler, ListSessionsHandler
 from src.application.services import OutboxRelay
 from src.infrastructure.cache import InMemoryCache
 from src.infrastructure.di.containers import Container
-from src.infrastructure.messaging import InMemoryEventPublisher
+from src.infrastructure.messaging import InMemoryEventPublisher, KafkaEventPublisher
 from src.infrastructure.persistence.sqlalchemy.sql_unit_of_work import SQLUnitOfWork
 from src.infrastructure.security import Argon2PasswordHasher, JWTTokenService
 from src.infrastructure.system import SystemClock, UUID7IdGenerator
@@ -51,6 +51,8 @@ CONTAINER_CONFIG = {
         "file_path": "events.jsonl",
         "relay_poll_interval_seconds": 2,
         "relay_batch_size": 25,
+        "kafka_bootstrap_servers": "localhost:9092",
+        "kafka_client_id": "auth-service-outbox",
     },
 }
 
@@ -96,3 +98,15 @@ class TestContainer:
     def test_query_handlers_receive_cache_ttl(self, container: Container) -> None:
         assert container.get_me_handler()._ttl == timedelta(seconds=60)
         assert container.list_sessions_handler()._ttl == timedelta(seconds=90)
+
+    def test_kafka_publisher_resolves_when_configured(self) -> None:
+        container = Container()
+        config = {
+            **CONTAINER_CONFIG,
+            "events": {
+                **CONTAINER_CONFIG["events"],
+                "publisher": "kafka",
+            },
+        }
+        container.config.from_dict(config)
+        assert isinstance(container.event_publisher(), KafkaEventPublisher)

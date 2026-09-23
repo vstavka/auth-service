@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from pathlib import Path
 
 from src.application.dto import IntegrationEvent
 from src.application.ports.events import EventPublisher
+from src.infrastructure.messaging.envelope import event_to_bytes
 
 
 class FileEventPublisher(EventPublisher):
@@ -13,14 +13,7 @@ class FileEventPublisher(EventPublisher):
         self._path = Path(path)
 
     async def publish(self, event: IntegrationEvent) -> None:
-        envelope = {
-            "event_id": str(event.event_id),
-            "event_type": event.event_type,
-            "aggregate_id": event.aggregate_id,
-            "occurred_at": event.occurred_at.isoformat(),
-            "payload": event.payload,
-        }
-        line = json.dumps(envelope, ensure_ascii=False) + "\n"
+        line = event_to_bytes(event).decode("utf-8") + "\n"
         await asyncio.to_thread(self._append, line)
 
     def _append(self, line: str) -> None:

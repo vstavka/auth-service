@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.infrastructure.messaging import InMemoryEventPublisher
 from src.workers.outbox import _install_stop_signals, run_outbox_relay
 
 
@@ -23,6 +24,7 @@ async def test_run_outbox_relay_invokes_run_forever(monkeypatch: pytest.MonkeyPa
 
     container = MagicMock()
     container.outbox_relay.return_value = relay
+    container.event_publisher.return_value = InMemoryEventPublisher()
 
     settings = SimpleNamespace(
         logging=SimpleNamespace(level="WARNING", path=None),
@@ -35,4 +37,34 @@ async def test_run_outbox_relay_invokes_run_forever(monkeypatch: pytest.MonkeyPa
 
     await run_outbox_relay()
 
+    relay.run_forever.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_run_outbox_relay_starts_and_stops_kafka_publisher(
+        monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    relay = MagicMock()
+    relay.run_forever = AsyncMock()
+    publisher = MagicMock()
+    publisher.start = AsyncMock()
+    publisher.stop = AsyncMock()
+
+    container = MagicMock()
+    container.outbox_relay.return_value = relay
+    container.event_publisher.return_value = publisher
+
+    settings = SimpleNamespace(
+        logging=SimpleNamespace(level="WARNING", path=None),
+        app=SimpleNamespace(name="auth-service", version="0.1.0"),
+    )
+    monkeypatch.setattr("src.workers.outbox.Settings", lambda: settings)
+    monkeypatch.setattr("src.workers.outbox.setup_logging", lambda **kwargs: None)
+    monkeypatch.setattr("src.workers.outbox.Container", lambda: container)
+    monkeypatch.setattr("src.workers.outbox._install_stop_signals", lambda stop: None)
+
+    await run_outbox_relay()
+
+    publisher.start.assert_awaited_once()
+    publisher.stop.assert_awaited_once()
     relay.run_forever.assert_awaited_once()

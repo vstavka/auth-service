@@ -35,11 +35,19 @@ async def run_outbox_relay() -> None:
     stop = asyncio.Event()
     _install_stop_signals(stop)
 
+    publisher = container.event_publisher()
+    start = getattr(publisher, "start", None)
+    if start is not None:
+        await start()
+
     relay: OutboxRelay = container.outbox_relay()
     logger.info("Outbox relay worker started")
     try:
         await relay.run_forever(stop_event=stop)
     finally:
+        stop_publisher = getattr(publisher, "stop", None)
+        if stop_publisher is not None:
+            await stop_publisher()
         logger.info("Outbox relay worker stopped")
 
 

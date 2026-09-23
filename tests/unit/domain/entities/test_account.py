@@ -152,6 +152,7 @@ class TestAccount:
         assert account.status is AccountStatus.DISABLED
         assert account.updated_at == first_disabled_at
         assert account.is_active is False
+        assert account.updated_at != second_disabled_at
 
     def test_enable_disabled_account(self, account: Account):
         disabled_at = datetime(

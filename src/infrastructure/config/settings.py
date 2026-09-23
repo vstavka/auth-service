@@ -79,8 +79,10 @@ class RedisSettings(BaseSettings):
 class EventsSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="EVENTS_", env_file=".env", extra="ignore")
 
-    publisher: Literal["memory", "file"] = "memory"
+    publisher: Literal["memory", "file", "kafka"] = "memory"
     file_path: str = "events.jsonl"
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_client_id: str = "auth-service-outbox"
     relay_poll_interval_seconds: float = 1.0
     relay_batch_size: int = 50
 

@@ -60,8 +60,7 @@ class Container(containers.DeclarativeContainer):
     )
     event_publisher = providers.Singleton(
         create_event_publisher,
-        kind=config.events.publisher,
-        file_path=config.events.file_path,
+        events=config.events,
     )
     outbox_relay = providers.Factory(
         OutboxRelay,
