@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Enum
+from sqlalchemy import String, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.domain.enums import AccountStatus
@@ -18,5 +18,5 @@ class Account(Base):
         default=AccountStatus.ACTIVE,
     )
     password_hash: Mapped[str] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),nullable=False)
