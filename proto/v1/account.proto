@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package vstavkf.auth.v1;
+
+service AccountService {
+
+  rpc GetAccountById(GetAccountByIdRequest)
+      returns (GetAccountByIdResponse);
+
+  rpc GetAccountsByIds(GetAccountsByIdsRequest)
+      returns (GetAccountsByIdsResponse);
+
+}
+
+enum AccountStatus {
+  ACCOUNT_STATUS_UNSPECIFIED = 0;
+  ACCOUNT_STATUS_ACTIVE = 1;
+  ACCOUNT_STATUS_DISABLED = 2;
+  ACCOUNT_STATUS_DELETED = 3;
+}
+
+message Account {
+  string id = 1;
+  string email = 2;
+  AccountStatus status = 3;
+}
+
+message GetAccountByIdRequest {
+  string account_id = 1;
+}
+
+message GetAccountByIdResponse {
+  Account account = 1;
+}
+
+message GetAccountsByIdsRequest {
+  repeated string account_ids = 1;
+}
+
+message GetAccountsByIdsResponse {
+  repeated Account accounts = 1;
+}

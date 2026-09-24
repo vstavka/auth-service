@@ -32,6 +32,9 @@ services:
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8000}:8000"
+      - "${GRPC_PORT:-50051}:${GRPC_PORT:-50051}"
+    expose:
+      - "50051"
     depends_on:
       migrate:
         condition: service_completed_successfully

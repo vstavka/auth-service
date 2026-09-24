@@ -2,6 +2,8 @@ from src.application.dto.access_token_payload import AccessTokenPayload
 from src.application.dto.account_public import AccountPublic, account_to_public
 from src.application.dto.change_email_request import ChangeEmailRequest
 from src.application.dto.change_password_request import ChangePasswordRequest
+from src.application.dto.get_account_by_id_query import GetAccountByIdQuery
+from src.application.dto.get_accounts_by_ids_query import GetAccountsByIdsQuery
 from src.application.dto.get_me_query import GetMeQuery
 from src.application.dto.integration_event import IntegrationEvent
 from src.application.dto.list_sessions_query import ListSessionsQuery
@@ -27,6 +29,8 @@ __all__ = [
     "ChangePasswordRequest",
     "ListSessionsQuery",
     "GetMeQuery",
+    "GetAccountByIdQuery",
+    "GetAccountsByIdsQuery",
     "RevokeSessionRequest",
     "RevokeAllSessionsRequest",
     "IntegrationEvent",

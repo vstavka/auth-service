@@ -55,6 +55,18 @@ class SQLAccountRepository(AccountRepository):
             return None
         return account_orm_to_domain(entity)
 
+    async def get_by_ids(self, account_ids: list[UserId]) -> list[Account]:
+        """Возвращает найденные аккаунты по списку идентификаторов."""
+        if not account_ids:
+            return []
+
+        public_ids = [str(account_id.value) for account_id in account_ids]
+        logger.debug("Fetching accounts by ids count=%s", len(public_ids))
+        stmt = select(AccountORM).where(AccountORM.public_id.in_(public_ids))
+        result = await self._session.execute(stmt)
+        entities = result.scalars().all()
+        return [account_orm_to_domain(entity) for entity in entities]
+
     async def get_by_email(self, email: Email) -> Account | None:
         """Возвращает аккаунт по нормализованному email."""
         logger.debug("Fetching account by email=%s", email.value)

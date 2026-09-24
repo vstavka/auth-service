@@ -13,6 +13,7 @@ from src.presentation.api.middlewares.request_id_middleware import RequestIDMidd
 from src.presentation.api.v1 import dependencies as v1_dependencies
 from src.presentation.api.v1.router import router as v1_router
 from src.presentation.api.v1.routers import auth, me, sessions
+from src.presentation.grpc import start_grpc_server
 
 
 @asynccontextmanager
@@ -34,7 +35,19 @@ async def lifespan(app: FastAPI):
         engine = container.engine()
         await init_sqlite_schema(engine)
 
+    grpc_server = None
+    if settings.grpc.enabled:
+        grpc_server = await start_grpc_server(
+            account_service=container.account_grpc_service(),
+            host=settings.grpc.host,
+            port=settings.grpc.port,
+            slow_request_threshold_seconds=settings.logging.slow_request_threshold_seconds,
+        )
+
     yield
+
+    if grpc_server is not None:
+        await grpc_server.stop(grace=5)
 
     cache = container.cache()
     if isinstance(cache, RedisCache):

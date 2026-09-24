@@ -11,6 +11,9 @@ class AccountRepository(Protocol):
     async def get_by_id(self, account_id: UserId) -> Account | None:
         """Возвращает аккаунт по идентификатору."""
 
+    async def get_by_ids(self, account_ids: list[UserId]) -> list[Account]:
+        """Возвращает найденные аккаунты по списку идентификаторов."""
+
     async def get_by_email(self, email: Email) -> Account | None:
         """Возвращает аккаунт по нормализованному email."""
 

@@ -87,6 +87,14 @@ class EventsSettings(BaseSettings):
     relay_batch_size: int = 50
 
 
+class GrpcSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="GRPC_", env_file=".env", extra="ignore")
+
+    enabled: bool = True
+    host: str = "0.0.0.0"
+    port: int = 50051
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__", extra="ignore")
 
@@ -97,3 +105,4 @@ class Settings(BaseSettings):
     cache: CacheSettings = Field(default_factory=CacheSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)
     events: EventsSettings = Field(default_factory=EventsSettings)
+    grpc: GrpcSettings = Field(default_factory=GrpcSettings)

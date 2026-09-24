@@ -19,6 +19,13 @@ class FakeAccountRepository(AccountRepository):
     async def get_by_id(self, account_id: UserId) -> Account | None:
         return self._accounts.get(account_id)
 
+    async def get_by_ids(self, account_ids: list[UserId]) -> list[Account]:
+        return [
+            account
+            for account_id in account_ids
+            if (account := self._accounts.get(account_id)) is not None
+        ]
+
     async def get_by_email(self, email: Email) -> Account | None:
         for account in self._accounts.values():
             if account.email == email:

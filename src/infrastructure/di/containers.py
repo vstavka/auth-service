@@ -11,7 +11,12 @@ from src.application.commands import (
     RevokeAllSessionsHandler,
     RevokeSessionHandler,
 )
-from src.application.queries import GetMeHandler, ListSessionsHandler
+from src.application.queries import (
+    GetAccountByIdHandler,
+    GetAccountsByIdsHandler,
+    GetMeHandler,
+    ListSessionsHandler,
+)
 from src.application.services import OutboxRelay
 from src.domain.services.password_policy import PasswordPolicy
 from src.infrastructure.cache.factory import create_cache
@@ -20,6 +25,7 @@ from src.infrastructure.persistence.sqlalchemy.database import create_engine, cr
 from src.infrastructure.persistence.sqlalchemy.sql_unit_of_work import SQLUnitOfWork
 from src.infrastructure.security import Argon2PasswordHasher, JWTTokenService
 from src.infrastructure.system import SystemClock, UUID7IdGenerator
+from src.presentation.grpc.services import AccountGrpcService
 
 
 class Container(containers.DeclarativeContainer):
@@ -140,9 +146,26 @@ class Container(containers.DeclarativeContainer):
         cache=cache,
         ttl=account_cache_ttl,
     )
+    get_account_by_id_handler = providers.Factory(
+        GetAccountByIdHandler,
+        uow=unit_of_work,
+        cache=cache,
+        ttl=account_cache_ttl,
+    )
+    get_accounts_by_ids_handler = providers.Factory(
+        GetAccountsByIdsHandler,
+        uow=unit_of_work,
+        cache=cache,
+        ttl=account_cache_ttl,
+    )
     list_sessions_handler = providers.Factory(
         ListSessionsHandler,
         uow=unit_of_work,
         cache=cache,
         ttl=sessions_cache_ttl,
+    )
+    account_grpc_service = providers.Factory(
+        AccountGrpcService,
+        get_account_by_id=get_account_by_id_handler,
+        get_accounts_by_ids=get_accounts_by_ids_handler,
     )
